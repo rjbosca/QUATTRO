@@ -1,0 +1,1020 @@
+#-------------------------------------------------------------------
+# DICOM Dictionary
+#         
+# this file contains 3 sections:
+# [TAGS]  with a description of attributes containing the parameters
+#         - group number
+#         - element number
+#         - attribute name
+#         - Value Representation (VR)
+#         - Value Multiplicity          
+#         - Type (1,2,3) is optional. If missing Type 1 is assumed
+#         - an optional ID which indicates that the attribute is 
+#           part of a Siemens proprietary private attribute.
+#
+#         The parameters are separated by ';'. The last optional ID
+#         can be omitted. This means that the standard DICOM rules 
+#         are applied.
+#
+#         There are 2 Siemens proprietary shadow groups:
+#         - CSA Image Header Info  (0029,1010)
+#         - CSA Series Header Info (0029,1020)
+# 
+#         Inside these 2 groups there are several attributes stored 
+#         with an own identification scheme via key/values. In the
+#         series related shadows (0029,1020) there is the MrProtocol
+#         data structure which has a similar but different key/value
+#         addressing scheme. These 3 different type of sources are
+#         indicated by the optional ID with value 1 (Series shadow
+#         attribute), 2 (Image shadow attribute) and 3 (MR Prot attribute).
+#
+# [ALIAS] Some variables naming, especially those of the Siemens 
+#         shadows are cumbersome to use due to it's name length. The 
+#         alias mechanism offers the opportunity to define shorter 
+#         and better readable attribute names. It is required to add 
+#         the tag (group, element) of an exiting entry in the tags 
+#         section.
+#
+# [FUNCTIONAL_GROUPS]  Definintion of the functional group for 
+#         e.g. the new MR Enhanced Multiframe format. A functional
+#         group is a fixed collection of DICOM tags which may occur
+#         in the 'Shared Functional Groups Sequence' (5200,9229) or 
+#         in the 'Per-frame Functional Groups Sequence' (5200,9230).
+#         
+#         A group is here defined via the tags and a groupID.
+#         The first tag of a new group is the group master. E.g. 
+#         the Frame Content Sequence (0020,9111) with groupID 1 (last
+#         column) has the tags (0020,9156)..(0020,9158).
+#
+#-------------------------------------------------------------------
+
+# [TAGS]
+# Group 0
+0000;0000;Group 0 Length                                     ;UL;1
+0000;0002;Affected SOPClassUID                               ;UI;1
+0000;0100;Command Field                                      ;US;1
+0000;0110;MessageID                                          ;US;1
+0000;0700;Priority                                           ;US;1
+0000;0800;DataSetType                                        ;US;1
+0000;1000;Affected SOPInstanceUID                            ;UI;1
+
+# Group 2
+0002;0000;Group 2 Length                                     ;UL;1
+0002;0001;File Meta Information Version                      ;OB;1
+0002;0002;Media Storage SOP Class UID                        ;UI;1
+0002;0003;Media Storage SOP Instance UID                     ;UI;1
+0002;0010;Transfer Syntax UID                                ;UI;1
+0002;0012;Implementation Class UID                           ;UI;1
+0002;0013;Implementation Version Name                        ;SH;1
+0002;0014;Test 1                                             ;LO;1
+0002;0015;Test 2                                             ;UI;1
+0002;0016;Source Application Entity Title                    ;AE;1
+
+# Group 4
+0004;1130;File-set ID                                        ;CS;1
+0004;1200;Offset of first record of root directory entity    ;UL;1
+0004;1202;Offset of last  record of root directory entity    ;UL;1
+0004;1212;File-set consistency flag                          ;US;1
+0004;1220;Directory Record Sequence                          ;SQ;1
+0004;1400;Offset of next directory record in directory entity;UL;1
+0004;1410;Record in-use flag                                 ;US;1
+0004;1420;Offset of referenced lower level directory entity  ;UL;1
+0004;1430;Directory Record Type                              ;CS;1
+0004;1500;Referenced File ID                                 ;CS;1-8
+
+# Group 8
+0008;0000;Group 8 Length                                     ;UL;1
+0008;0005;Specific Character Set                             ;CS;1-n
+0008;0008;Image Type                                         ;CS;1-n
+0008;0012;Instance Creation Date                             ;DA;1;3
+0008;0013;Instance Creation Time                             ;TM;1
+0008;0014;Instance Creation UID                              ;UI;1
+0008;0016;SOP Class UID                                      ;UI;1
+0008;0018;SOP Instance UID                                   ;UI;1
+0008;0020;Study Date                                         ;DA;1;2
+0008;0021;Series Date                                        ;DA;1;3
+0008;0022;Acquisition Date                                   ;DA;1;3
+0008;0023;Content Date                                       ;DA;1;2
+0008;0030;Study Time                                         ;TM;1;2
+0008;0031;Series Time                                        ;TM;1;3
+0008;0032;Acquisition Time                                   ;TM;1;3
+0008;0033;Content Time                                       ;TM;1;2
+0008;0050;Accession Number                                   ;SH;1;2
+0008;0060;Modality                                           ;CS;1;1
+0008;0064;Conversion Type                                    ;CS;1
+0008;0070;Manufacturer                                       ;LO;1;2
+0008;0080;Institution Name                                   ;LO;1;3
+0008;0081;Institution Address                                ;ST;1;3
+0008;0090;Referring Physician's Name                         ;PN;1;2
+0008;0100;Code Value                                         ;SH;1
+0008;0102;Coding Scheme Designator                           ;SH;1
+0008;0103;Coding Scheme Version                              ;SH;1
+0008;0104;Code Meaning                                       ;LO;1
+0008;0105;Mapping Resource                                   ;CS;1
+0008;010C;Private Coding Scheme Creator UID                  ;UI;1
+0008;1010;Station Name                                       ;SH;1;3
+0008;1030;Study Description                                  ;LO;1;3
+0008;103E;Series Description                                 ;LO;1;3
+0008;1050;Performing Physician's Name                        ;PN;1;3
+0008;1060;Name of Physician's Reading Study                  ;PN;1-n;3
+0008;1070;Operator's Name                                    ;PN;1-n;3
+0008;1080;Admitting Diagnosis Description                    ;LO;1-n;3
+0008;1090;Manufacturer's Model Name                          ;LO;1;3
+0008;1110;Reference Study Sequence                           ;SQ;1
+# 0008;1111 was formerly the Referenced Study Component Sequence
+0008;1111;Referenced Performed Procedure Step Sequence       ;SQ;1
+0008;1115;Referenced Series Sequence                         ;SQ;1
+0008;1140;Referenced Image Sequence                          ;SQ;1
+0008;1145;Referenced Curve Sequence                          ;SQ;1
+0008;1150;Referenced SOP Class UID                           ;UI;1;1
+0008;1155;Referenced SOP Instance UID                        ;UI;1;1
+0008;1160;Referenced Frame Number                            ;IS;1-n
+0008;1199;Referenced SOP Sequence                            ;SQ;1
+0008;2111;Derivation Description                             ;ST;1
+0008;2112;Source Image Sequence                              ;SQ;1
+0008;2218;Anatomic Region Sequence                           ;SQ;1             
+0008;2220;Anatomic Region Modifier Sequence                  ;SQ;1
+0008;2228;Primary Anatomic Structure Sequence                ;SQ;1
+0008;2230;Primary Anatomic Structure Modifier Sequence       ;SQ;1   
+
+# Private Group 9
+0009;0010;Private creator code 9 10                          ;LO;1
+0009;0012;Private creator code 9 12                          ;LO;1
+0009;0013;Private creator code 9 13                          ;LO;1
+0009;1010;Comments RETIRED                                   ;LO;1
+0009;1015;Unique Identifier RETIRED                          ;LO;1
+0009;1040;Data Object Type RETIRED                           ;US;1
+0009;1041;Data Object Subtype RETIRED                        ;SH;1  
+0009;1210;Storage Mode RETIRED                               ;CS;1
+0009;1212;Evaluation Mask Image RETIRED                      ;UL;1
+0009;1226;Table Zero Date RETIRED                            ;DA;1
+0009;1227;Table Zero Time RETIRED                            ;TM;1
+0009;1316;CPU Identification Label RETIRED                   ;LO;1
+
+# Group 10
+0010;0000;Group 10 Length                                    ;UL;1
+0010;0010;Patient's Name                                     ;PN;1;2
+0010;0020;Patient ID                                         ;LO;1;2
+0010;0030;Patient's Birth Date                               ;DA;1;2
+0010;0032;Patient’s Birth Time                               ;TM;1;3
+0010;0040;Patient's Sex                                      ;CS;1;2
+0010;1010;Patient's Age                                      ;AS;1;3
+0010;1030;Patient's Weight                                   ;DS;1;3
+0010;1040;Patient's Address                                  ;LO;1;3
+0010;4000;Patient Comments                                   ;LT;1;3
+
+# Group 18
+0018;0000;Group 18 Length                                    ;UL;1
+0018;0010;Contrast/Bolus Agent                               ;LO;1
+0018;0015;Body Part Examined                                 ;CS;1;3
+0018;0020;Scanning Sequence                                  ;CS;1-n;1
+0018;0021;Sequence Variant                                   ;CS;1-n;1
+0018;0022;Scan Options                                       ;CS;1-n;2
+0018;0023;MR Acquisition Type                                ;CS;1;2
+0018;0024;Sequence Name                                      ;SH;1;3
+0018;0025;Angio Flag                                         ;CS;1;3
+0018;0050;Slice Thickness                                    ;DS;1;2
+0018;0080;Repetition Time                                    ;DS;1;2
+0018;0081;Echo Time                                          ;DS;1;2
+0018;0082;Inversion Time                                     ;DS;1;2
+0018;0083;Number of Averages                                 ;DS;1;3
+0018;0084;Imaging Frequency                                  ;DS;1;3
+0018;0085;Imaged Nucleus                                     ;SH;1;3
+0018;0086;Echo Number(s)                                     ;IS;1-n;3
+0018;0087;Magnetic Field Strength                            ;DS;1;3
+0018;0088;Spacing Between Slices                             ;DS;1;3
+0018;0089;Number of Phase Encoding Steps                     ;IS;1;3
+0018;0091;Echo Train Length                                  ;IS;1;2
+0018;0093;Percent Sampling                                   ;DS;1;3
+0018;0094;Percent Phase Field of View                        ;DS;1;3
+0018;0095;Pixel Bandwidth                                    ;DS;1;3
+0018;1000;Device Serial Number                               ;LO;1;3
+0018;1020;Software Version(s)                                ;LO;1-n;3
+0018;1030;Protocol Name                                      ;LO;1;3;
+0018;1041;Contrast/Bolus Volume                              ;DS;1;2
+0018;1047;Contrast Flow Duration(s)                          ;DS;1-n;3
+0018;1060;Trigger Time                                       ;DS;1;2
+0018;1080;Beat Rejection Flag                                ;CS;1;3
+0018;1200;Date of Last Calibration                           ;DA;1-n;3
+0018;1201;Time of Last Calibration                           ;TM;1-n;3
+0018;1250;Receive Coil Name                                  ;SH;1;3
+0018;1251;Transmit Coil Name                                 ;SH;1;3
+0018;1310;Acquisition Matrix                                 ;US;4;3
+0018;1312;In-plane Phase Encoding Direction                  ;CS;1;3 
+0018;1314;Flip Angle                                         ;DS;1;3
+0018;1315;Variable Flip Angle Flag                           ;CS;1;3
+0018;1316;SAR                                                ;DS;1;3
+0018;1318;dB/dt                                              ;DS;1;3
+0018;5100;Patient Position                                   ;CS;1;2
+0018;9069;Parallel Reduction Factor In-Plane                 ;FD;1
+
+# Group 20
+0020;0000;Group 20 Length                                    ;UL;1
+0020;000D;Study Instance UID                                 ;UI;1;1
+0020;000E;Series Instance UID                                ;UI;1;1
+0020;0010;Study ID                                           ;SH;1;2
+0020;0011;Series Number                                      ;IS;1;2
+0020;0012;Acquisition Number                                 ;IS;1;3
+0020;0013;Instance Number                                    ;IS;1;2
+0020;0020;Patient Orientation                                ;CS;2;3
+0020;0032;Image Position (Patient)                           ;DS;3;1
+0020;0037;Image Orientation (Patient)                        ;DS;6;1
+0020;0052;Frame of Reference UID                             ;UI;1;1
+0020;0060;Laterality                                         ;CS;1;3
+0020;0100;Temporal Position Identifier                       ;IS;1;3
+0020;0105;Number of Temporal Positions                       ;IS;1;3
+0020;1040;Position Reference Indicator                       ;LO;1;2
+0020;1041;Slice Location                                     ;DS;1;3
+0020;4000;Image Comments                                     ;LT;1;3
+
+# Group 28
+0028;0000;Group 28 Length                                    ;UL;1
+0028;0002;Samples per Pixel                                  ;US;1;1
+0028;0004;Photometric Interpretation                         ;CS;1;1
+0028;0006;Planar Configuration                               ;US;1;1
+0028;0008;Number Of Frames                                   ;IS;1
+0028;0010;Rows                                               ;US;1;1
+0028;0011;Columns                                            ;US;1;1
+0028;0030;Pixel Spacing                                      ;DS;2;1
+0028;0100;Bits Allocated                                     ;US;1;1
+0028;0101;Bits Stored                                        ;US;1;1
+0028;0102;High Bit                                           ;US;1;1
+0028;0103;Pixel Representation                               ;US;1;1
+0028;0106;Smallest Image Pixel Value                         ;US;1;3
+0028;0107;Largest Image Pixel Value                          ;US;1;3
+0028;0300;Quality Control Image                              ;CS;1;3
+0028;0301;Burned In Annotation                               ;CS;1;3
+0028;1050;Window Center                                      ;DS;1-n
+0028;1051;Window Width                                       ;DS;1-n
+0028;1052;Rescale Intercept                                  ;DS;1
+0028;1053;Rescale Slope                                      ;DS;1
+0028;1054;Rescale Type                                       ;LO;1
+0028;1054;Rescale Type2                                      ;LO;1
+0028;1055;Window Center and Width Explanation                ;LO;1-n
+0028;2110;Lossy Image Compression                            ;CS;1;3
+0028;3003;LUT Explanation                                    ;LO;1               
+
+# Item tags, IT is a data type not known in DICOM.
+# used a Item Tag classification for the encoding of sequences
+FFFE;E000;Item                                               ;IT;1
+FFFE;E00D;Item Delimitation Item                             ;IT;1
+FFFE;E0DD;Sequence Delimitation Item                         ;IT;1
+
+# private Group 29
+0029;0010;Private creator code 29 10                         ;LO;1
+0029;0011;Private creator code 29 11                         ;LO;1
+0029;0012;Private creator code 29 12                         ;LO;1
+0029;0013;Private creator code 29 13                         ;LO;1
+0029;1008;CSA Image Header Type                              ;CS;1
+0029;1009;CSA Image Header Version                           ;LO;1
+0029;1010;CSA Image Header Info                              ;OB;1
+0029;1018;CSA Series Header Type                             ;CS;1
+0029;1019;CSA Series Header Version                          ;LO;1
+0029;1020;CSA Series Header Info                             ;OB;1
+0029;1131;PMTF Information 1                                 ;LO;1
+0029;1132;PMTF Information 2                                 ;UL;1
+0029;1133;PMTF Information 3                                 ;UL;1
+0029;1134;PMTF Information 4                                 ;CS;1
+0029;1210;CSA NON Image Header Info                          ;OB;1
+0029;1220;CSA NON Series Header Info                         ;OB;1
+0029;1310;OOG                                                ;OB;1
+
+# Group 32
+0032;0000;Group 32 Length                                    ;UL;1
+0032;1060;Requested Procedure Description                    ;LO;1
+0032;1064;Requested Procedure Code Sequence                  ;SQ;1
+0032;4000;Study Comments                                     ;LT;1
+
+# Group 40
+0040;0244;Performed Procedure Step Start Date                ;DA;1
+0040;0245;Performed Procedure Step Start Time                ;TM;1
+0040;0253;Performed Procedure Step ID                        ;SH;1
+0040;0555;Acquisition Context Sequence                       ;SQ;1
+0040;08ea;Measurement Unit Code Sequence                     ;SQ;1
+0040;1001;Requested Procedure ID                             ;SH;1
+0040;2016;Placer Order Number/Imaging Service Request        ;LO;1
+0040;2017;Filer Order Number/Imaging Service Request         ;LO;1
+0040;a010;Relationship Type                                  ;CS;1
+0040;a120;DateTime                                           ;DA;1
+0040;a121;Date                                               ;DA;1
+0040;a122;Time                                               ;TM;1
+0040;a123;Person Name                                        ;PN;1
+0040;a124;UID                                                ;UI;1
+0040;a040;Value Type                                         ;CS;1
+0040;a043;Concept-name Code Sequence                         ;SQ;1
+0040;a050;Continuity of Content                              ;CS;1
+0040;a160;Text Value                                         ;UT;1
+0040;a168;Concept Code Sequence                              ;SQ;1
+0040;a30a;Numeric Value                                      ;DS;1
+0040;a300;Measured Value Sequence                            ;SQ;1
+0040;a301;Numeric Value Qualifier Code Sequence              ;SQ;1
+0040;a370;Referenced Request Sequence                        ;SQ;1
+0040;a372;Performed Procedure Code Sequence                  ;SQ;1
+0040;a375;Current Requested Procedure Evidence Sequence      ;SQ;1
+0040;a491;Completion Flag                                    ;CS;1
+0040;a492;Completion Flag Description                        ;LO;1
+0040;a493;Verification Flag                                  ;CS;1
+0040;a504;Content Template Sequence                          ;SQ;1
+0040;a730;Content Sequence                                   ;SQ;1
+0040;db00;Template Identifier                                ;CS;1
+
+# Group 70
+0070;0022;Graphic Data                                       ;FL;2-n
+0070;0023;Graphic Type                                       ;CS;1
+
+
+# Group 88
+0088;0000;Group 88 Length                                    ;UL;1
+0088;0140;Storage Media File-set UID                         ;UI;1
+0088;0200;Icon Image                                         ;SQ;1
+
+# Group 6000
+6000;0010;Overlay Rows                                       ;US;1
+6000;0011;Overlay Columns                                    ;US;1
+6000;0015;Number of Frames in Overlay                        ;IS;1
+6000;0022;Overlay Description                                ;LO;1
+6000;0040;Overlay Type                                       ;CS;1
+6000;0050;Overlay Origin                                     ;SS;2
+6000;0051;Image Frame Origin                                 ;US;1
+6000;0100;Overlay Bits Allocated                             ;US;1
+6000;0102;Overlay Bits Position                              ;US;1
+6000;3000;Overlay Data                                       ;OW;1
+
+# group 7003
+7003;0010;Private Group NUMARIS_OLD (1,2)                    ;LO;1
+7003;1010;Numaris 1 Header data                              ;OB;1
+
+# Group 7FE0
+7FE0;0010;Pixel Data                                         ;OW;1
+7FE1;0010;Private creator code 7FE0 10                       ;LO;1
+7FE1;1010;Pixel Data non image                               ;OW;1
+7FE1;1011;Non Image filename                                 ;LO;1
+
+#MR MF dictionary
+#0008;9007;Frame Type                                        ;CS;4               
+0008;9007;Frame Type                                        ;CS;1-n               
+0008;9121;Referenced Raw Data Sequence                      ;SQ;1               
+0008;9123;Creator-Version UID                               ;UI;1               
+0008;9124;Derivation Image Sequence                         ;SQ;1               
+0008;9092;Referring Image Evidence Sequence                 ;SQ;1               
+0008;9154;Source Image Evidence Sequence                    ;SQ;1               
+0008;9205;Pixel Presentation                                ;CS;1               
+0008;9206;Volumetric Properties                             ;CS;1               
+0008;9207;Volume Based Calculation Technique                ;CS;1               
+0008;9208;Complex Image Component                           ;CS;1               
+0008;9209;Acquisition Contrast                              ;CS;1               
+0008;9215;Derivation Code Sequence                          ;SQ;1               
+0008;9237;Referenced Grayscale Presentation State Sequence  ;SQ;1               
+
+0018;9004;Content Qualification                             ;CS;1               
+0018;9005;Pulse Sequence Name                               ;SH;1               
+0018;9006;MR Imaging Modifier Sequence                      ;SQ;1               
+0018;9008;Echo Pulse Sequence                               ;CS;1               
+0018;9009;Inversion Recovery                                ;CS;1               
+0018;9010;Flow Compensation                                 ;CS;1               
+0018;9011;Multiple Spin Echo                                ;CS;1               
+0018;9012;Multi-planar Excitation                           ;CS;1               
+0018;9014;Phase Contrast                                    ;CS;1               
+0018;9015;Time of Flight Contrast                           ;CS;1               
+0018;9016;Spoiling                                          ;CS;1               
+0018;9017;Steady State Pulse Sequence                       ;CS;1               
+0018;9018;Echo Planar Pulse Sequence                        ;CS;1               
+0018;9019;Tag Angle First Axis                              ;FD;1               
+0018;9020;Magnetization Transfer                            ;CS;1               
+0018;9021;T2 Preparation                                    ;CS;1               
+0018;9022;Blood Signal Nulling                              ;CS;1               
+0018;9024;Saturation Recovery                               ;CS;1               
+0018;9025;Spectrally Selected Suppression                   ;CS;1               
+0018;9026;Spectrally Selected Excitation                    ;CS;1               
+0018;9027;Spatial Pre-saturation                            ;CS;1               
+0018;9028;Tagging                                           ;CS;1               
+0018;9029;Oversampling Phase                                ;CS;1               
+0018;9030;Tag Spacing First Dimension                       ;FD;1               
+0018;9032;Geometry of k-Space Traversal                     ;CS;1               
+0018;9033;Segmented k-Space Traversal                       ;CS;1               
+0018;9034;Rectilinear Phase Encode Reordering               ;CS;1               
+0018;9035;Tag Thickness                                     ;FD;1               
+0018;9036;Partial Fourier Direction                         ;CS;1               
+0018;9037;Gating Synchronization Technique                  ;CS;1               
+0018;9041;Receive Coil Manufacturer Name                    ;LO;1               
+0018;9042;MR Receive Coil Sequence                          ;SQ;1               
+0018;9043;Receive Coil Type                                 ;CS;1               
+0018;9044;Quadrature Receive Coil                           ;CS;1               
+0018;9045;Multi-Coil Definition Sequence                    ;SQ;1               
+0018;9046;Multi-Coil Configuration                          ;LO;1               
+0018;9047;Multi-Coil Element Name                           ;SH;1               
+0018;9048;Multi-Coil Element Used                           ;CS;1               
+0018;9049;MR Transmit Coil Sequence                         ;SQ;1               
+0018;9050;Transmit Coil Manufacturer Name                   ;LO;1               
+0018;9051;Transmit Coil Type                                ;CS;1               
+0018;9052;Spectral Width                                    ;FD;1-2             
+0018;9053;Chemical Shift Reference                          ;FD;1-2             
+0018;9054;Volume Localization Technique                     ;CS;1               
+0018;9058;MR Acquisition Frequency Encoding Steps           ;US;1               
+0018;9059;Decoupling                                        ;CS;1               
+0018;9060;Decoupled Nucleus                                 ;CS;1-2             
+0018;9061;Decoupling Frequency                              ;FD;1-2             
+0018;9062;Decoupling Method                                 ;CS;1               
+0018;9063;Decoupling Chemical Shift Reference               ;FD;1-2             
+0018;9064;k-space Filtering                                 ;CS;1               
+0018;9065;Time Domain Filtering                             ;CS;1-2             
+0018;9066;Number of Zero fills                              ;US;1-2             
+0018;9067;Baseline Correction                               ;CS;1               
+0018;9070;Cardiac R-R Interval Specified                    ;FD;1               
+0018;9073;Acquisition Duration                              ;FD;1               
+0018;9074;Frame Acquisition Datetime                        ;DT;1               
+0018;9075;Diffusion Directionality                          ;CS;1               
+0018;9076;Diffusion Gradient Direction Sequence             ;SQ;1               
+0018;9077;Parallel Acquisition                              ;CS;1               
+0018;9078;Parallel Acquisition Technique                    ;CS;1               
+0018;9079;Inversion Times                                   ;FD;1-n             
+0018;9080;Metabolite Map Description                        ;ST;1               
+0018;9081;Partial Fourier                                   ;CS;1               
+0018;9082;Effective Echo Time                               ;FD;1               
+0018;9084;Chemical Shift Sequence                           ;SQ;1               
+0018;9085;Cardiac Signal Source                             ;CS;1               
+0018;9087;Diffusion b-value                                 ;FD;1               
+0018;9089;Diffusion Gradient Orientation                    ;FD;3               
+0018;9090;Velocity Encoding Direction                       ;FD;3               
+0018;9091;Velocity Encoding Minimum Value                   ;FD;1               
+0018;9093;Number of k-Space Trajectories                    ;US;1               
+0018;9094;Coverage of k-Space                               ;CS;1               
+0018;9095;Spectroscopy Acquisition Phase Rows               ;UL;1               
+0018;9098;Transmitter Frequency                             ;FD;1-2             
+0018;9100;Resonant Nucleus                                  ;CS;1-2             
+0018;9101;Frequency Correction                              ;CS;1               
+0018;9103;MR Spectroscopy FOV/Geometry Sequence             ;SQ;1               
+0018;9104;Slab Thickness                                    ;FD;1               
+0018;9105;Slab Orientation                                  ;FD;3               
+0018;9106;Mid Slab Position                                 ;FD;3               
+0018;9107;MR Spatial Saturation Sequence                    ;SQ;1               
+0018;9112;MR Timing And Related Parameters Sequence         ;SQ;1               
+0018;9114;MR Echo Sequence                                  ;SQ;1               
+0018;9115;MR Modifier Sequence                              ;SQ;1               
+0018;9117;MR Diffusion Sequence                             ;SQ;1               
+0018;9118;Cardiac Trigger Sequence                          ;SQ;1               
+0018;9119;MR Averages Sequence                              ;SQ;1               
+0018;9125;MR FOV/Geometry Sequence                          ;SQ;1               
+0018;9127;Spectroscopy Acquisition Data Columns             ;UL;1               
+0018;9126;Volume Localization Sequence                      ;SQ;1               
+0018;9147;Diffusion Anisotropy Type                         ;CS;1               
+0018;9151;Frame Reference Datetime                          ;DT;1               
+0018;9152;Metabolite Map Sequence                           ;SQ;1               
+0018;9155;Parallel Reduction Factor Out-Of-Plane            ;FD;1               
+0018;9159;Spectroscopy Acquisition Out-Of-Plane Phase Steps ;UL;1               
+0018;9166;Bulk Motion Status                                ;CS;1               
+0018;9168;Parallel Reduction Factor Second In-Plane         ;FD;1               
+0018;9169;Cardiac Beat Rejection Technique                  ;CS;1               
+0018;9170;Respiratory Motion Compensation                   ;CS;1               
+0018;9171;Respiratory Signal Source                         ;CS;1               
+0018;9172;Bulk Motion Compensation Technique                ;CS;1               
+0018;9173;Bulk Motion Signal                                ;CS;1               
+0018;9174;Applicable Safety Standard Agency                 ;CS;1               
+0018;9175;Applicable Safety Standard Version                ;LO;1               
+0018;9176;Operation Mode Sequence                           ;SQ;1               
+0018;9177;Operating Mode Type                               ;CS;1               
+0018;9178;Operation Mode                                    ;CS;1               
+0018;9179;Specific Absorption Rate Definition               ;CS;1               
+0018;9180;Gradient Output Type                              ;CS;1               
+0018;9181;Specific Absorption Rate Value                    ;FD;1               
+0018;9182;Gradient Output                                   ;FD;1               
+0018;9183;Flow Compensation Direction                       ;CS;1               
+0018;9184;Tagging Delay                                     ;FD;1               
+0018;9195;Chemical Shifts Minimum Integration Limit         ;FD;1               
+0018;9196;Chemical Shifts Maximum Integration Limit         ;FD;1               
+0018;9197;MR Velocity Encoding Sequence                     ;SQ;1               
+0018;9198;First Order Phase Correction                      ;CS;1               
+0018;9199;Water Referenced Phase Correction                 ;CS;1               
+0018;9200;MR Spectroscopy Acquisition Type                  ;CS;1               
+0018;9214;Respiratory Motion Status                         ;CS;1               
+0018;9217;Velocity Encoding Maximum Value                   ;FD;1               
+0018;9218;Tag Spacing Second Dimension                      ;SS;1               
+0018;9219;Tag Angle Second Axis                             ;SS;1               
+0018;9220;Frame Acquisition Duration                        ;FD;1               
+0018;9226;MR Image Frame Type Sequence                      ;SQ;1               
+0018;9227;MR Spectroscopy Frame Type Sequence               ;SQ;1               
+0018;9231;MR Acquisition Phase Encoding Steps In-Plane      ;US;1               
+0018;9232;MR Acquisition Phase Encoding Steps Out-Of-Plane  ;US;1               
+0018;9234;Spectroscopy Acquisition Phase Columns            ;UL;1               
+0018;9236;Cardiac Cycle Position                            ;CS;1
+0018;9239;Specific Absorption Rate Sequence                 ;SQ;1               
+
+0020;9056;Stack ID                                          ;SH;1               
+0020;9057;In-Stack Position Number                          ;UL;1               
+0020;9071;Frame Anatomy Sequence                            ;SQ;1               
+0020;9072;Frame Laterality                                  ;CS;1               
+0020;9111;Frame Content Sequence                            ;SQ;1               
+0020;9113;Plane Position Sequence                           ;SQ;1               
+0020;9116;Plane Orientation Sequence                        ;SQ;1               
+0020;9128;Temporal Position Index                           ;UL;1               
+0020;9153;Trigger Delay Time                                ;FD;1               
+0020;9156;Frame Acquisition Number                          ;US;1               
+0020;9157;Dimension Index Values                            ;UL;1-n               
+0020;9158;Frame Comments                                    ;LT;1               
+0020;9161;Concatenation UID                                 ;UI;1               
+0020;9162;In-concatenation Number                           ;US;1               
+0020;9163;In-concatenation Total Number                     ;US;1               
+0020;9164;Dimension Organization UID                        ;UI;1               
+0020;9165;Dimension Index Pointer                           ;AT;1               
+0020;9167;Functional Group Pointer                          ;AT;1               
+0020;9213;Dimension Index Private Creator                   ;LO;1               
+0020;9221;Dimension Organization Sequence                   ;SQ;1               
+0020;9222;Dimension Index Sequence                          ;SQ;1               
+0020;9228;Concatenation Frame Offset Number                 ;UL;1               
+0020;9238;Functional Group Private Creator                  ;LO;1               
+
+0028;9001;Data Point Rows                                   ;UL;1               
+0028;9002;Data Point Columns                                ;UL;1               
+0028;9003;Signal Domain                                     ;CS;1-2             
+0028;9099;Largest Monochrome Pixel Value                    ;US;1               
+0028;9108;Data Representation                               ;CS;1               
+0028;9110;Pixel Measures Sequence                           ;SQ;1               
+0028;9132;Frame VOI LUT Sequence                            ;SQ;1               
+0028;9145;Pixel Value Transformation Sequence               ;SQ;1               
+0028;9235;Signal Domain Rows                                ;CS;1               
+
+0040;9096;Real World Value Mapping Sequence                 ;SQ;1               
+0040;9210;LUT Label                                         ;SS;1               
+0040;9211;Real World Value LUT Last Value Mapped            ;US;1               
+0040;9212;Real World Value LUT Data                         ;FD;n               
+0040;9216;Real World Value LUT First Value Mapped           ;US;1               
+0040;9224;Real World Value Intercept                        ;FD;1               
+0040;9225;Real World Value Slope                            ;FD;1               
+0040;A170;Purpose of Referenced Code Sequence               ;SQ;1
+
+2050;0010;Presentation LUT Sequence                         ;SQ;1
+
+5200;9229;Shared Functional Groups Sequence                 ;SQ;1               
+5200;9230;Per-frame Functional Groups Sequence              ;SQ;1               
+
+5600;0010;First Order Phase Correction Angle                ;OF;1               
+5600;0020;Spectroscopy Data                                 ;OF;1               
+
+# Group 21 Series Shadow Attribute private group SERIES_SHADOW_DATA
+0021;0010;Private Group SERIES_SHADOW_DATA                  ;LO;1;3;1
+0021;1001;UsedPatientWeight                                 ;IS;1;3;1
+0021;1002;SarWholeBody                                      ;DS;3;3;1
+0021;1003;MrProtocol                                        ;UN;1;3;1
+0021;1004;SliceArrayConcatenations                          ;DS;1;3;1
+0021;1005;RelTablePosition                                  ;IS;1;3;1
+0021;1006;CoilForGradient                                   ;LO;1;3;1
+0021;1007;LongModelName                                     ;LO;1;3;1
+
+# Group 21 Image Shadow Attribute private group IMAGE_SHADOW_DATA
+0021;0011;Private Group IMAGE_SHADOW_DATA                   ;LO;1;3;2
+0021;1101;NumberOfImagesInMosaic                            ;US;1;3;2
+0021;1102;SliceNormalVector                                 ;FD;3;3;2
+0021;1103;SliceMeasurementDuration                          ;DS;1;3;2
+0021;1104;TimeAfterStart                                    ;DS;1;3;2
+0021;1105;B_value                                           ;IS;1;3;2
+0021;1106;ICE_Dims                                          ;LO;1;3;2
+0021;1114;Rows                                              ;US;1;3;2
+0021;1115;Columns                                           ;US;1;3;2
+0021;1116;EchoTime                                          ;DS;1;3;2
+0021;1117;PixelSpacing                                      ;DS;2;3;2
+0021;1118;SliceThickness                                    ;DS;1;3;2
+0021;1119;ImageOrientationPatient                           ;DS;6;3;2
+
+# Group 23 MR Protocol Attribute private group PROTOCOL_SHADOW_DATA
+0023;0010;Private Group PROTOCOL_SHADOW_DATA                ;LO;1;3;3
+0023;1001;sPrepPulses.ucSatRecovery                         ;US;1;3;3
+0023;1002;sKSpace.lBaseResolution                           ;US;1;3;3
+
+# Group 25 MR Attribute private group
+0025;0010;MR Private Group MR_SERIES_SHADOW_ATTRIBUTE       ;LO;1
+0025;1001;Coil For Gradient                                 ;CS;1
+0025;1002;sKSpace.lBaseResolution                           ;US;1
+
+#[ALIASES]
+0023;1002;BaseResolution
+0021;1101;MosaicImages
+0010;0010;PatientName
+0023;1001;SatRec
+0021;1114;SpecRows
+0021;1115;SpecCols
+0021;1116;SpecEchoTime
+0021;1117;SpecPixelSpacing
+0021;1118;SpecSliceThickness
+0021;1119;SpecImageOrientationPatient
+
+0023;1001;TA
+
+#[SHADOW_GROUPS]
+0029;0000;SIEMENS MEDCOM HEADER                             ;LO;
+0029;0000;SIEMENS CSA ENVELOPE                              ;LO;
+0029;0000;SIEMENS CSA REPORT                                ;LO;
+0029;0000;SIEMENS CSA HEADER                                ;LO;
+0029;0000;SIEMENS MEDCOM OOG                                ;LO;
+0029;0000;IMAGE NUM 4                                       ;LO;
+
+#[FUNCTIONAL_GROUPS]
+#
+#FGH:Frame Content Sequence (0020,9111), group ID 1
+#
+0020;9111;Frame Content Sequence                             ;SQ;1;1;1
+0018;9074;Frame Acquisition Datetime                         ;DT;1
+0018;9151;Frame Reference Datetime                           ;DT;1
+0018;9214;Respiratory Cycle Position                         ;CS;1
+0018;9220;Frame Acquisition Duration                         ;FD;1
+0018;9236;Cardiac Cycle Position                             ;CS;1
+0020;9056;Stack ID                                           ;SH;1
+0020;9057;In-Stack Position Number                           ;UL;1
+0020;9128;Temporal Position Index                            ;UL;1
+0020;9156;Frame Acquisition Number                           ;US;1
+0020;9157;Dimension Index Values                             ;UL;1-n
+0020;9158;Frame Comments                                     ;LT;1
+
+
+#
+#FGH:Plane Position Sequence (0020,9113), group ID 2
+#
+0020;9113;Plane Position Sequence                            ;SQ;1;1;2
+0020;0032;Image Position (Patient)                           ;DS;3
+
+#
+#FGH:Plane Orientation Sequence (0020,9116), group ID 3
+#
+0020;9116;Plane Orientation Sequence                         ;SQ;1;1;3
+0020;0037;Image Orientation (Patient)                        ;DS;6
+
+#
+#FGH:Dimension Organization Sequence (0020,9221), group ID 31
+#
+0020;9221;Dimension Organization Sequence                    ;SQ;1;1-n;31
+0020;9164;Dimension Organization UID                         ;UI;1
+
+#
+#FGH:Dimension Index Sequence (0020,9222), group ID 32
+#
+0020;9222;Dimension Index Sequence                           ;SQ;1;1-n;32
+0020;9164;Dimension Organization UID                         ;UI;1
+0020;9165;Dimension Index Pointer                            ;AT;1               
+0020;9167;Functional Group Pointer                           ;AT;1               
+0020;9213;Dimension Index Private Creator                    ;LO;1               
+0020;9238;Functional Group Private Creator                   ;LO;1               
+
+#
+#FGH:Pixel Measures Sequence (0028,9110), group ID 4
+#
+0028;9110;Pixel Measures Sequence                           ;SQ;1;1;4
+0018;0050;Slice Thickness                                   ;DS;1
+0028;0030;Pixel Spacing                                     ;DS;2
+
+#
+#FGH:Referenced Image Sequence (0008,1400), group ID 5 - Later
+#
+0008;1140;Referenced Image Sequence                         ;SQ;1;1;5
+0008;1150;Referenced SOP Class UID                          ;UI;1
+0008;1155;Referenced SOP Instance UID                       ;UI;1
+0008;1160;Referenced Frame Number                           ;IS;1-n
+0040;A170;Purpose of Referenced Code Sequence               ;SQ;1
+0008;0100;Code Value                                        ;SH;1
+0008;0102;Coding Scheme Designator                          ;SH;1
+0008;0103;Coding Scheme Version                             ;SH;1
+0008;0104;Code Meaning                                      ;LO;1
+
+#
+#FGH:Derivation Image Sequence (0008,9124), group ID 6 - Later 
+#
+0008;9124;Derivation Image Sequence                         ;SQ;1;1;6
+0008;2111;Derivation Description                            ;ST;1
+0008;9215;Derivation Code Sequence                          ;SQ;1
+0008;0100;Code Value                                        ;SH;1
+0008;0102;Coding Scheme Designator                          ;SH;1
+0008;0103;Coding Scheme Version                             ;SH;1
+0008;0104;Code Meaning                                      ;LO;1
+0008;2112;Source Image Sequence                             ;SQ;1
+0008;1150;Referenced SOP Class UID                          ;UI;1
+0008;1155;Referenced SOP Instance UID                       ;UI;1
+0008;1160;Referenced Frame Number                           ;IS;1-n
+0040;A170;Purpose of Referenced Code Sequence               ;SQ;1
+0008;0102;Coding Scheme Designator                          ;SH;1
+0008;0103;Coding Scheme Version                             ;SH;1
+0008;0104;Code Meaning                                      ;LO;1
+
+#
+#FGH:Cardiac Trigger Sequence (0018,9118), group ID 7
+#
+0018;9118;Cardiac Trigger Sequence                          ;SQ;1;1;7
+0020;9153;Trigger Delay Time                                ;FD;1
+
+
+#
+#FGH:Frame Anatomy Sequence (0020,9071), group ID 8
+#
+0020;9071;Frame Anatomy Sequence                            ;SQ;1;1;8
+0008;2218;Anatomic Region Sequence                          ;SQ;1             
+0020;9072;Frame Laterality                                  ;CS;1               
+#0008;0100;Code Value                                       ;SH;1
+#0008;0102;Coding Scheme Designator                         ;SH;1
+#0008;0103;Coding Scheme Version                            ;SH;1
+#0008;0104;Code Meaning                                     ;LO;1
+#0008;2220;Anatomic Region Modifier Sequence                ;SQ;1
+#0008;0100;Code Value                                       ;SH;1
+#0008;0102;Coding Scheme Designator                         ;SH;1
+#0008;0103;Coding Scheme Version                            ;SH;1
+#0008;0104;Code Meaning                                     ;LO;1
+#0008;2228;Primary Anatomic Structure Sequence              ;SQ;1
+#0008;0100;Code Value                                       ;SH;1
+#0008;0102;Coding Scheme Designator                         ;SH;1
+#0008;0103;Coding Scheme Version                            ;SH;1
+#0008;0104;Code Meaning                                     ;LO;1
+#0008;2230;Primary Anatomic Structure Modifier Sequence     ;SQ;1   
+#0008;0100;Code Value                                       ;SH;1
+#0008;0102;Coding Scheme Designator                         ;SH;1
+#0008;0103;Coding Scheme Version                            ;SH;1
+#0008;0104;Code Meaning                                     ;LO;1
+
+#
+#FGH:Pixel Value Transformation Sequence (0028,9145), group ID 9
+#
+0028;9145;Pixel Value Transformation Sequence               ;SQ;1;1;9
+0028;1052;Rescale Intercept                                 ;DS;1
+0028;1053;Rescale Slope                                     ;DS;1
+0028;1054;Rescale Type                                      ;LO;1
+
+#
+#FGH:Frame VOI LUT Sequence (0028,9132), group ID 10
+#
+0028;9132;Frame VOI LUT Sequence                            ;SQ;1;1;10
+0028;1050;Window Center                                     ;DS;1-n
+0028;1051;Window Width                                      ;DS;1-n
+
+#
+#FGH:Real World Value Mapping Sequence (0040,9096), group ID 11
+#
+0040;9096;Real World Value Mapping Sequence                 ;SQ;1;1;11
+0028;3003;LUT Explanation                                   ;LO;1               
+0040;9210;LUT Label                                         ;SS;1               
+0040;9211;Real World Value LUT Last Value Mapped            ;US;1                              
+0040;9212;Real World Value LUT Data                         ;FD;n               
+0040;9216;Real World Value LUT First Value Mapped           ;US;1
+0040;9224;Real World Value Intercept                        ;FD;1               
+0040;9225;Real World Value Slope                            ;FD;1               
+
+#
+#FGH:Frame VOI LUT Sequence (0028,9132), group ID 12
+#
+0028;9132;Frame VOI LUT Sequence                            ;SQ;1;1;12
+0028;1050;Window Center                                     ;DS;1-n
+0028;1051;Window Width                                      ;DS;1-n
+#BRAIN / SOFT TISSUE / LUNG / BONE
+0028;1055;Window Center and Width Explanation               ;CS;1-n
+
+#;
+#FGH:Contrast/Bolus Usage Sequence (0018,9141), group ID 13;
+#;
+0018;9341;Contrast/Bolus Usage Sequence                     ;SQ;1;1;13;
+0018;9337;Contrast/Bolus Agent Number                       ;US;1;
+#YES / NO
+0018;9342;Contrast/Bolus Agent Administered                 ;CS;1;
+#YES / NO
+0018;9343;Contrast/Bolus Agent Detected                     ;CS;1;
+#PRE_CONTRAST / POST_CONTRAST / IMMEDIATE / DYNAMIC / STEADY_STATE / DELAYED / ARTERIAL / CAPILLARY / VENOUS / PORTAL_VENOUS
+0018;9344;Contrast/Bolus Agent Phase                        ;CS;1;
+;
+#;
+#FGH:Contrast/Bolus Agent Sequence (0018,0012), group ID 14;
+#;
+0018;0012;Contrast/Bolus Agent Sequence                     ;SQ;1;1;14;
+#0008;0100;Code Value                                        ;SH;1;
+#0008;0102;Coding Scheme Designator                          ;SH;1;
+#0008;0103;Coding Scheme Version                             ;SH;1;
+#0008;0104;Code Meaning                                      ;LO;1;
+#0008;010F;Context Identifier;CS;1;#ContextID = 12
+0018;9337;Contrast/Bolus Agent Number                       ;US;1;
+0018;0014;Contrast/Bolus Administration Route Sequence      ;SQ;1;
+#0008;0100;Code Value                                        ;SH;1;
+#0008;0102;Coding Scheme Designator                          ;SH;1;
+#0008;0103;Coding Scheme Version                             ;SH;1;
+#0008;0104;Code Meaning                                      ;LO;1;
+#ContextID = 11
+#0008;010F;Context Identifier                                ;CS;1;
+0018;9338;Contrast/Bolus Ingredient Code Sequence           ;SQ;0-n;
+#0008;0100;Code Value                                        ;SH;1;
+#0008;0102;Coding Scheme Designator                          ;SH;1;
+#0008;0103;Coding Scheme Version                             ;SH;1;
+#0008;0104;Code Meaning                                      ;LO;1;
+#ContextID = 13
+#0008;010F;Context Identifier                                ;CS;1;
+0018;1041;Contrast/Bolus Volume                             ;DS;1;
+0018;1049;Contrast/Bolus Ingredient Concentration           ;DS;1-n;
+0018;9340;Contrast Administration Profile Sequence          ;SQ;1;
+0018;1040;Contrast/Bolus Route                              ;LO;1
+0018;1041;Contrast/Bolus Volume                             ;DS;1
+0018;1042;Contrast/Bolus Start Time                         ;TM;1
+0018;1043;Contrast/Bolus Stop Time                          ;TM;1
+0018;1046;Contrast Flow Rate                                ;DS;1
+0018;1047;Contrast Flow Duration                            ;DS;1
+
+#
+#FGH:Anatomy Region Sequence (0008,2218), group ID 15
+#
+0008;2218;Anatomy Region Sequence                          ;SQ;1;1;15             
+0008;0100;Code Value                                       ;SH;1
+0008;0102;Coding Scheme Designator                         ;SH;1
+0008;0103;Coding Scheme Version                            ;SH;1
+0008;0104;Code Meaning                                     ;LO;1
+
+#
+#FGH:Anatomy Region Modifier Sequence (0008,2220), group ID 16
+#
+0008;2220;Anatomy Region Modifier Sequence                 ;SQ;1;1;16             
+0008;0100;Code Value                                       ;SH;1
+0008;0102;Coding Scheme Designator                         ;SH;1
+0008;0103;Coding Scheme Version                            ;SH;1
+0008;0104;Code Meaning                                     ;LO;1
+0008;2228;Primary Anatomic Structure Sequence              ;SQ;1
+
+#
+#FGH:Primary Anatomic Structure Sequence (0008,2228), group ID 17
+#
+0008;2228;Primary Anatomic Structure Sequence              ;SQ;1;1;17             
+0008;0100;Code Value                                       ;SH;1
+0008;0102;Coding Scheme Designator                         ;SH;1
+0008;0103;Coding Scheme Version                            ;SH;1
+0008;0104;Code Meaning                                     ;LO;1
+
+#
+#FGH:Primary Anatomic Structure Modifier Sequence (0008,2230), group ID 18
+#
+0008;2230;Primary Anatomic Structure Modifier Sequence     ;SQ;1;1;18         
+0008;0100;Code Value                                       ;SH;1
+0008;0102;Coding Scheme Designator                         ;SH;1
+0008;0103;Coding Scheme Version                            ;SH;1
+0008;0104;Code Meaning                                     ;LO;1
+
+##############################################################################
+# MR functional groups/sequences
+##############################################################################
+
+#
+#FGH:MR Image Frame Type Sequence (0018,9226), group ID 49
+#
+0018;9226;MR Image Frame Type Sequence                    ;SQ;1;1;49
+0008;9007;Frame Type                                      ;CS;4
+0008;9205;Pixel Presentation                              ;CS;1              
+0008;9206;Volumetric Properties                           ;CS;1               
+0008;9207;Volume Based Calculation Technique              ;CS;1               
+0008;9208;Complex Image Component                         ;CS;1               
+0008;9209;Acquisition Contrast                            ;CS;1            
+
+#
+#FGH:MR Spectroscopy Frame Type Sequence (0018,9227), group ID 50
+#
+0018;9227;MRSpectroscopyFrameTypeSequence                 ;SQ;1;1;50
+0008;9007;Frame Type                                      ;CS;4
+0008;9205;Pixel Presentation                              ;CS;1              
+0008;9206;Volumetric Properties                           ;CS;1               
+0008;9207;Volume Based Calculation Technique              ;CS;1               
+0008;9208;Complex Image Component                         ;CS;1               
+0008;9209;Acquisition Contrast                            ;CS;1            
+
+#
+#FGH:Operation Mode Sequence (0018,9176), group ID 51
+#
+0018;9176;Operation Mode Sequence                         ;SQ;1;1;51               
+0018;9177;Operating Mode Type                             ;CS;1          
+0018;9178;Operation Mode                                  ;CS;1        
+
+#
+#FGH:Specific Absorption Rate Sequence (0018,9239), group ID 52
+#
+0018;9239;Specific Absorption Rate Sequence               ;SQ;1;1;52
+0018;9179;Specific Absorption Rate Definition             ;CS;1
+0018;9181;Specific Absorption Rate Value                  ;FD;1
+
+#
+#FGH:MR Timing And Related Parameters Sequence (0018,9112), group ID 53
+#
+0018;9112;MR Timing And Related Parameters Sequence       ;SQ;1;1;53
+0018;0080;Repetition Time                                 ;DS;1
+0018;0091;Echo Train Length                               ;IS;1
+0018;1314;Flip Angle                                      ;DS;1
+0018;9176;Operation Mode Sequence                         ;SQ;1-n               
+0018;9180;Gradient Output Type                            ;CS;1               
+0018;9182;Gradient Output                                 ;FD;1               
+# Implement later, nested SQ not possible up to now
+0018;9239;Specific Absorption Rate Sequence               ;SQ;1-n
+#0018;9179;Specific Absorption Rate Definition             ;CS;1
+#0018;9181;Specific Absorption Rate Value                  ;FD;1
+
+#
+#FGH:MR FOV/Geometry Sequence (0018,9125), group ID 54
+#
+0018;9125;MR FOV/Geometry Sequence                        ;SQ;1;1;54
+0018;0093;Percent Sampling                                ;DS;1
+0018;0094;Percent Phase Field of View                     ;DS;1
+0018;1312;In-plane Phase Encoding Direction               ;CS;1  
+0018;9058;MR Acquisition Frequency Encoding Steps         ;US;1
+0018;9231;MR Acquisition Phase Encoding Steps In-Plane    ;US;1               
+0018;9232;MR Acquisition Phase Encoding Steps Out-Of-Plane;US;1
+
+#
+#FGH:MR Echo Sequence (0018,9114), group ID 55
+#
+0018;9114;MR Echo Sequence                                ;SQ;1;1;55      
+0018;9082;Effective Echo Time                             ;FD;1
+
+#
+#FGH:MR Modifier Sequence (0018,9115), group ID 56
+#
+0018;9115;MR Modifier Sequence                            ;SQ;1;1;56               
+0018;9009;Inversion Recovery                              ;CS;1
+0018;9010;Flow Compensation                               ;CS;1
+0018;9016;Spoiling                                        ;CS;1
+0018;9021;T2 Preparation                                  ;CS;1
+0018;9026;Spectrally Selected Excitation                  ;CS;1
+0018;9027;Spatial Pre-saturation                          ;CS;1
+0018;9036;Partial Fourier Direction                       ;CS;1
+0018;9069;Parallel Reduction Factor In-Plane              ;FD;1
+0018;9077;Parallel Acquisition                            ;CS;1               
+0018;9078;Parallel Acquisition Technique                  ;CS;1
+0018;9079;Inversion Times                                 ;FD;1-n
+0018;9081;Partial Fourier                                 ;CS;1
+0018;9155;Parallel Reduction Factor Out-Of-Plane          ;FD;1               
+0018;9168;Parallel Reduction Factor Second In-Plane       ;FD;1
+0018;9183;Flow Compensation Direction                     ;CS;1
+
+#
+#FGH:MR Imaging Modifier Sequence (0018,9006), group ID 57
+#
+0018;9006;MR Imaging Modifier Sequence                    ;SQ;1;1;57
+0018;0095;Pixel Bandwidth                                 ;DS;1
+0018;9019;Tag Angle First Axis                            ;FD;1               
+0018;9020;Magnetization Transfer                          ;CS;1               
+0018;9022;Blood Signal Nulling                            ;CS;1    
+0018;9028;Tagging                                         ;CS;1                              
+0018;9030;Tag Spacing First Dimension                     ;FD;1
+0018;9035;Tag Thickness                                   ;FD;1
+0018;9098;Transmitter Frequency                           ;FD;1-2
+0018;9184;Tagging Delay                                   ;FD;1
+0018;9218;Tag Spacing Second Dimension                    ;SS;1
+0018;9219;Tag Angle Second Axis                           ;SS;1
+
+#
+#FGH:MR Receive Coil Sequence (0018,9042), group ID 58
+#
+0018;9042;MR Receive Coil Sequence                        ;SQ;1;1;58
+0018;1250;Receive Coil Name                               ;SH;1
+0018;9041;Receive Coil Manufacturer Name                  ;LO;1                                             
+0018;9043;Receive Coil Type                               ;CS;1               
+0018;9044;Quadrature Receive Coil                         ;CS;1               
+# Implement later, nested SQ not possible up to now
+#0018;9045;Multi-Coil Definition Sequence                  ;SQ;1               
+#0018;9047;Multi-Coil Element Name                         ;SH;1               
+#0018;9048;Multi-Coil Element Used                         ;CS;1
+0018;9046;Multi-Coil Configuration                        ;LO;1
+                              
+#
+#FGH:MR Transmit Coil Sequence (0018,9049), group ID 59
+#
+0018;9049;MR Transmit Coil Sequence                       ;SQ;1;1;59               
+0018;1251;Transmit Coil Name                              ;SH;1
+0018;9050;Transmit Coil Manufacturer Name                 ;LO;1
+0018;9051;Transmit Coil Type                              ;CS;1               
+
+#
+#FGH:MR Diffusion Sequence (0018,9117), group ID 60
+#
+0018;9117;MR Diffusion Sequence                           ;SQ;1;1;60
+0018;9075;Diffusion Directionality                        ;CS;1               
+# Implement later, nested SQ not possible up to now
+#0018;9076;Diffusion Gradient Direction Sequence          ;SQ;1                             
+#0018;9089;Diffusion Gradient Orientation                 ;FD;3
+0018;9087;Diffusion b-value                               ;FD;1
+0018;9147;Diffusion Anisotropy Type                       ;CS;1
+              
+#
+#FGH:MR Averages Sequence (0018,9119), group ID 61
+#
+0018;9119;MR Averages Sequence                            ;SQ;1;1;61
+0018;0083;Number of Averages                              ;DS;1
+
+#
+#FGH:MR Spatial Saturation Sequence (0018,9107), group ID 62
+#
+0018;9107;MR Spatial Saturation Sequence                  ;SQ;1;1;62
+0018;9104;Slab Thickness                                  ;FD;1               
+0018;9105;Slab Orientation                                ;FD;3               
+0018;9106;Mid Slab Position                               ;FD;3
+
+#
+#FGH:Metabolite Map Sequence (0018,9152), group ID 63
+#
+0018;9152;Metabolite Map Sequence                         ;SQ;1;1;63
+0018;9080;Metabolite Map Description                      ;ST;1
+# Implement later, nested SQ not possible up to now
+#0018;9084;Chemical Shift Sequence                         ;SQ;1
+#0018;9195;Chemical Shifts Minimum Integration Limit       ;FD;1               
+#0018;9196;Chemical Shifts Maximum Integration Limit       ;FD;1
+
+#
+#FGH:MR Velocity Encoding Sequence (0018,9197), group ID 64
+#
+0018;9197;MR Velocity Encoding Sequence                   ;SQ;1;1;64
+0018;9090;Velocity Encoding Direction                     ;FD;3               
+0018;9091;Velocity Encoding Minimum Value                 ;FD;1
+0018;9217;Velocity Encoding Maximum Value                 ;FD;1
+
+

@@ -1,0 +1,171 @@
+% --- Executes just before reg_window is made visible.
+function reg_window_OpeningFcn(hObj, eventdata, handles, varargin)
+
+[sl se] = deal_cell(get(obj.h_sl,'Value'));
+set([handles.popupmenu_target handles.popupmenu_moving],...
+        'String',get(obj.h_exam,'String'),'Value',get(obj.h_exam,'Value'));
+set([handles.edit_target handles.edit_moving],'String',num2str(se));
+set([handles.slider_target handles.slider_moving],...
+                        'Max',get(obj.h_sl(1),'Max'),'Value',sl,'Min',1,...
+                               'SliderStep',get(obj.h_sl(1),'SliderStep'));
+
+% Show images
+clim = get(obj.h_axes.main,'CLim');
+im = obj.images(get(obj.h_sl(1),'Value'),get(obj.h_sl(1),'Value'));
+imshow(im,clim,'Parent',handles.axes_target);
+imshow(im,clim,'Parent',handles.axes_moving);
+
+% Determine if ROIs exist
+if obj.exist('regions')
+    set(handles.checkbox_use_segmentation,'Enable','on');
+end
+
+
+
+% --- Executes on button press in pushbutton_register.
+function pushbutton_register_Callback(hObj, eventdata, handles)
+% hObj    handle to pushbutton_register (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Get registration options
+trns    = lower(getPopupMenu(handles.popupmenu_transformation));
+intrplt = lower(getPopupMenu(handles.popupmenu_interpolation));
+smlrty  = lower(getPopupMenu(handles.popupmenu_similarity));
+
+% Set up registration
+trafo('reset','trafo',[trns '3D']);
+inter('reset','inter',[intrplt 'Inter3D']);
+reg_distance('reset','distance',smlrty);
+
+% Create target image volume
+obj = exam;
+e_t  = get(handles.popupmenu_target,'Value');
+se_t = str2double(get(handles.edit_target,'String'));
+[volR omega m mint] = createRegVol(obj.imgs{e_t}(:,se_t),obj.hdrs{e_t}(:,se_t));
+
+% Create moving image volume
+e_m  = get(handles.popupmenu_moving,'Value');
+se_m = str2double(get(handles.edit_moving,'String'));
+if get(handles.checkbox_use_segmentation,'Value')
+    imgs = obj.imgs{e_m}(:,se_m);
+    for i = 1:size(imgs,1)
+        r_ind = get(obj.h_list,'Value');
+        try
+            r = obj.rois{e_m}(r_ind(1)).coordinates{i,se_m};
+            r_type = obj.rois{e_m}(r_ind(1)).types{i,se_m};
+            mask = cell_or(cellfun(@(x,y) rois2mask(m(1)*x,y,mint(1:2:3)),r,r_type,...
+                                                            'UniformOutput',false));
+            imgs{i}(~mask) = 0;
+        catch ME
+            imgs{i}(:) = 0;
+            valid_errs = {'MATLAB:badsubscript','MATLAB:cellfun:NotACell'};
+            if ~any(strcmpi(ME.identifier,valid_errs))
+                rethrow(ME);
+            end
+        end
+    end
+else
+    imgs = obj.imgs{e_m}(:,se_m);
+end
+volT = createRegVol(imgs,obj.hdrs{e_m}(:,se_m));
+
+% Register the two volumes
+MLdata = getMultilevel({volT,volR},omega,m);
+trafo('reset','trafo','translation3D');
+wc = registerVols_new(MLdata(1:2),[],100);
+trafo('reset','trafo',[trns '3D']);
+wc = registerVols_new(MLdata,convert_trafo(wc,'t3','r3'));
+
+% Store transformation
+handles.user.wc{se_m} = wc;
+guidata(hObj,handles);
+
+% Send to manual registration software
+handles.user.man_reg = manual_reg(obj.imgs{e_t}(:,se_t),obj.hdrs{e_t}(:,se_t),...
+                                  obj.imgs{e_m}(:,se_m),obj.hdrs{e_t}(:,se_m),{wc});
+
+
+% --- Executes on selection change in popupmenu_target.
+function popupmenu_Callback(hObj, eventdata, handles)
+% hObj    handle to popupmenu_target (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Get values
+tag = get(hObj,'Tag'); obj = exam;
+e_num = get(hObj,'Value');
+sl = get(handles.(strrep(tag,'popupmenu_','slider_')),'Value');
+se = round(str2double(get(handles.(strrep(tag,'popupmenu_','edit_')),'String')));
+
+% Show image
+im = obj.imgs{e_num}{sl,se};
+h_im = get(handles.(strrep(tag,'popupmenu_','axes_')),'Children');
+set(h_im,'CData',im);
+
+% Update checkbox
+if strcmpi(tag,'popupmenu_moving')
+    obj = exam; r_ind = get(obj.h_list,'Value');
+    try
+        r = obj.rois{e_num};
+    catch ME
+    end
+end
+
+
+% --- Executes on slider movement.
+function slider_Callback(hObj, eventdata, handles)
+
+
+% Use segmentation
+if get(handles.checkbox_use_segmentation,'Value')
+    r_ind = get(obj.h_list,'Value');
+    try
+        r = obj.rois{e_ind}(r_ind(1)).coordinates{sl,se};
+        r_type = obj.rois{e_ind}(r_ind(1)).types{sl,se};
+        mask = cell_or(cellfun(@(x,y) rois2mask(m(1)*x,y,m),r,r_type,...
+                                                        'UniformOutput',false));
+        im(~mask) = 0;
+    catch ME
+        im(:) = 0;
+        valid_errs = {'MATLAB:badsubscript','MATLAB:cellfun:NotACell'};
+        if ~any(strcmpi(ME.identifier,valid_errs))
+            rethrow(ME);
+        end
+    end
+end
+
+h_im = get(handles.(str),'Children');
+set(h_im,'CData',im);
+
+
+% --- Executes on button press in checkbox_use_segmentation.
+function checkbox_use_segmentation_Callback(hObj, eventdata, handles)
+% hObj    handle to checkbox_use_segmentation (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Get image
+obj = exam;
+e_ind = get(handles.popupmenu_moving,'Value');
+sl = get(handles.slider_moving,'Value');
+se = str2double(get(handles.edit_moving,'String'));
+h_im = get(handles.axes_moving,'Children');
+im = obj.imgs{e_ind}{sl,se}; m = size(im);
+if get(hObj,'Value')
+    r_ind = get(obj.h_list,'Value');
+    try
+        r = obj.rois{e_ind}(r_ind(1)).coordinates{sl,se};
+        r_type = obj.rois{e_ind}(r_ind(1)).types{sl,se};
+        mask = cell_or(cellfun(@(x,y) rois2mask(m(1)*x,y,m),r,r_type,...
+                                                        'UniformOutput',false));
+        im(~mask) = 0;
+    catch ME
+        im(:) = 0;
+        valid_errs = {'MATLAB:badsubscript','MATLAB:cellfun:NotACell'};
+        if ~any(strcmpi(ME.identifier,valid_errs))
+            rethrow(ME);
+        end
+    end
+end
+set(h_im,'CData',im);

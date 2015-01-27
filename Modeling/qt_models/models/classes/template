@@ -1,0 +1,291 @@
+% This file serves as a models class template, simply replace all instances
+% of <template> with the desired class name (renaming the file appropriately and
+% adding the ".m" file extension). In addition to defining the properties and
+% methods here, any additional functions needed for performing model fitting
+% will need to be defined and stored on the MATLAB search path, preferably in
+% the directory \Modeling\models\fcns
+%
+% Properties and methods explicitly defined in this template are required for
+% operation of the class and must be defined by the user. Many common
+% properties/methods are inherited from qt_models. Modifications to the
+% qt_models properties/methods should be avoided.
+
+classdef template < qt_models
+
+    properties %general model properties
+
+        % Define model specific properties here (e.g. acquisition specific 
+        % imaging parameters, additional model inputs, etc.). These properties
+        % should not be called directly from methods or events of the superclass 
+        % qt_models.
+
+    end
+
+    properties (Dependent = true,Hidden = true)
+
+        % Function used for model fitting
+        %
+        %   Function handle for the current model of the form @(x0,t) f(x0,t).
+		%	If no parameterized model is required, then this dependent property
+		%	will provide a null function handle (i.e. a function that always
+		%	returns an empty output)
+        modelFcn
+
+        % Function used for plotting the model
+        %
+        %   Function handle similar to the "modelFcn" property needed for models
+        %   that require uniform spacing in the dependent variable. This
+        %   function handle should have the same form as the "modelFcn" property
+        %   (i.e., @(x0,t) f(x0,t)).
+        plotFcn
+
+        % Flag for computation readiness
+        %
+        %   "isReady" is a logical value that specifies <template>'s readiness
+        %   to perform model quantitation. The "calcsReady" property of the
+        %   superclass qt_models checks for the existence of x/y data, meaning
+        %   that "isReady" should validate only <template> specific properties.
+        isReady
+
+    end
+
+    properties (Constant,Hidden = true)
+
+        % Model names
+        %
+        %   A cell array of strings containing the names of the models. The
+        %   location of each string specifies the index (i.e. the value of 
+        %   qt_models "modelVal" property) that should be used to access the 
+        %   appropriate model functions.
+        %
+        %   The qt_models GUI uses this property to populate the "Models" pop-up
+        %   user menu.
+        modelNames = {};
+
+        % Semi-quantitative parameters
+        %
+        %   "otherParams" is a cell array of strings containing the specifier
+        %   for all model parameters that can be computed without a non-linear
+        %   fitting algorithm. These parameters are computed during calls to the
+        %   "processFit" method. Valid parameters are:
+        %
+        %       Parameter       Description
+        %       ===========================
+        %       
+        otherParams = {};
+
+        % Non-linear model parameter names
+        %
+        %   "nlinParams" is a nested cell array of strings containing the
+        %   model's parameter names that are derived from non-linear fitting of 
+        %   each model. Each cell of "nlinParams" contains a cell array of 
+        %   strings for the model indexed by the "modelVal" property. Valid 
+        %   parameters are:
+        %
+        %       Parameter       Description
+        %       ===========================
+        nlinParams = {};
+
+        % Parameter units
+        %
+        %   "paramUnits" is a structure with fields corresponding to all 
+        %   parameters defined in the "nlinParams" and "otherParams" properties
+        %   containing strings that specify the respective units the parameters 
+        %   in the properties "nlinParams" and "otherParams". The "processFit"
+        %   method uses these units to convert modeling results to a unit object
+        %   (see "unit" for more information). If units are unused or arbitrary,
+        %   use an empty string (i.e., '').
+        %
+        %   NOTE: although this property is defined as constant, more advanced 
+        %   models (e.g. semi-quantitative pharmacokinetic parameters - see dce)
+        %   require a dependent property
+        paramUnits = struct('S0','',...
+                            'T1','milliseconds',...
+                            'R1','1/second');
+
+    end
+
+    %---------------------------- Class Constructor ----------------------------
+    methods
+
+        function obj = template(varargin)
+        %<template>  Class for performing quantitative <template> modeling
+        %
+        %   OBJ = <template>(X,Y,...) creates a <template> model object for
+        %   the vectors of data acquisitions values X and signal intensities Y,
+        %   returning the <template> object, OBJ.
+        %
+        %   OBJ = <template>(QTEXAM) creates a <template> modeling object from
+        %   the data stored in the qt_exam object QTEXAM. Associated QUATTRO
+        %   links are generated if available.
+        %
+        %   OBJ = <template>(...,'PROP1',VAL1,...) creates a <template> modeling
+        %	object as above, initializing the class properties specified by 
+        %	'PROP1' to the value VAL1, ect.
+
+            % Construct <template> specific defaults
+            obj.bounds = [];
+            obj.guess  = [];
+            obj.xLabel = '';
+            obj.yLabel = '';
+
+            % Parse the inputs
+            if isempty(varargin)
+                return
+            end
+            [props,vals] = parse_inputs(varargin{:});
+
+            % Apply user-specified options
+            for prpIdx = 1:length(props)
+                obj.(props{prpIdx}) = vals{prpIdx};
+            end
+
+            % Associate an instance of a QUATTRO GUI - only occurs if a qt_exam
+            % object is provided as input
+            if ~isempty(obj.hExam) && obj.hExam.isvalid
+                % Extract <template> specific property values from the qt_exam
+                % object. Usually, these values will be imaging options
+            end
+
+        end %<template>
+
+    end %class constructor
+
+
+    %------------------------------- Get Methods -------------------------------
+    methods
+
+        function val = get.isReady(obj)
+
+			% Define the <template> specific conditions for computation
+			% readiness. This value must be a logical scalar
+            % val = ...;
+                          
+        end %get.isReady
+
+        function val = get.modelFcn(obj)
+
+            switch obj.modelVal
+                case 1
+                    % val = @(x,xdata) custom model function here
+                case 2
+                    % val = @(x,xdata) different custom function here
+                case 3
+                    % etc.
+
+            end
+
+        end %get.modelFcn
+
+        function val = get.plotFcn(obj)
+
+            % Default functionality (there is no need for separate modeling and
+            % plotting functions)
+            val = obj.modelFcn;
+
+            % For an example of more complicated functionality see "dce.m".
+
+        end %get.plotFcn
+
+
+    end %obj.get methods
+
+
+	%------------------------------ Other Methods ------------------------------
+    methods (Hidden = true)
+
+        function val = process(obj,val)
+        %process  Performs pre-processing on data to be fitted
+        %
+        %   "process" calculates signal intensity conversions for various
+        %   qt_models sub-classes during calls to the "yProc" property of
+        %   qt_models.
+
+            % Process y-data (leave empty if no specific computations need to be
+            % performed to derive the data to be modeled from the signal
+            % intensity)
+
+        end %process
+
+        function val = processFit(obj,val)
+        %processFit  Performs post-processing on fitted data
+        %
+        %   processFit calculates additional model parameters that are not
+        %   otherwise computed by the "fit" method (i.e., don't require
+        %   non-linear fitting). For <template> objects, the additional model
+        %   parameter must be calculated here.
+
+            % Calculate the remaining parameters here not calculated by "fit"
+
+        end %processFit
+
+        function val = processGuess(obj,val)
+        %processGuess  Estimates non-linear initial guess
+        %
+        %   processGuess attempts to estimate (via simple computations) the
+        %   initial guess for non-linear model parameters. These computations
+        %   should be fast (and should not require iterative solutions).
+
+            % Only continue if autoGuess is enabled and y data exist
+            if ~obj.autoGuess || isempty(obj.y)
+                return
+            end
+
+            % Perfrom the estimates here:
+
+        end %processGuess
+
+        function val = processShow(obj,val) %#ok
+        %processShow  Perform sub-class specific "show" operations
+        %
+        %   processShow(OBJ) performs display operations specific to the
+        %   <template> object OBJ following a call to the qt_models method
+        %   "show" and can be left blank for models not requiring additional
+        %   plotting functionality
+        end %processShow
+
+    end %other methods (Hidden = true)
+
+end %classdef
+
+
+function varargout = parse_inputs(varargin)
+
+    % Determine input syntax (either qt_exam object or FA/signal)
+    parser = inputParser;
+    if strcmpi(class(varargin{1}),'qt_exam')
+        parser.addRequired('hExam',@(x) x.isvalid);
+        opts = varargin(2:2:end);
+    elseif nargin==1
+        error(['qt_models:' mfilename ':invalidExamObj'],...
+                        'Single input syntax requires a valid qt_exam object.');
+    else
+        parser.addRequired('x', @isnumeric);
+        parser.addRequired('y', @isnumeric);
+        opts = varargin(3:2:end);
+    end
+
+    % Add additional options to the parser
+    if ~isempty(opts)
+
+        % Validate the options
+        obj   = eval( mfilename );
+        props = properties(obj);
+        opts  = cellfun(@(x) validatestring(x,props),opts,...
+                                                         'UniformOutput',false);
+
+        % Assign the options to the parser
+        for prop = opts(:)'
+            parser.addParamValue(prop{1},obj.(prop{1}));
+        end
+
+    end
+
+    % Parse the inputs
+    parser.parse(varargin{:});
+
+    % Deal the outputs
+    varargout{1} = fieldnames(parser.Results);
+    varargout{2} = struct2cell(parser.Results);
+
+end

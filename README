@@ -1,0 +1,13 @@
+% Wondering where "install_QUATTRO.m" and "uninstall_QUATTRO.m" are?
+%
+% Because numerous systems make saving MATLAB's path a challenge, the front-end
+% user interface has been changed to make life a little easier. You no longer
+% need to prepare QUATTRO's paths via the install/uninstall scripts. Instead,
+% simply run "QUATTRO.m" from its parent directory, by adding that directory to
+% MATLAB's path, or by using the "run" function. For example:
+%
+%   run('D:\Dropbox\Research\Software\QUATTRO\QUATTRO.m')
+%
+% initializes MATLAB's path and creates an instance of the QUATTRO GUI. If the
+% GUI is not needed or undesired, then the file "qt_startup.m" can be run
+% instead, which can be found in ..\QUATTRO\Core\common.
