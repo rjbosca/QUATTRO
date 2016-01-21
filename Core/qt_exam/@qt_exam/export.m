@@ -22,7 +22,7 @@ function export(obj,varargin)
 %   (i.e. qt_image or qt_roi).
 
     % Validate and parse the inputs
-    [dataType,outDir] = parse_inputs(varargin{:});
+    [dataType,dataFormat,outDir] = parse_inputs(varargin{:});
 
     % Create a unique directory name within the user-specified directory
     outDir = tempname(outDir);
@@ -33,6 +33,12 @@ function export(obj,varargin)
         case 'images'
         case 'maps'
 
+            % Determine the file extension
+            fExt = 'dcm';
+            if ~strcmpi(dataFormat,'dicom')
+                fExt = dataFormat;
+            end
+
             % Loop through each slice and each map, exporting the data
             seInc = 0; %series incrementer
             for mapName = fieldnames(obj.maps)'
@@ -42,18 +48,18 @@ function export(obj,varargin)
                 mkdir( fullfile(outDir,seDir) );
 
                 % Write out all map data for the volume
-                for slIdx = 1:numel(obj.maps)
+                for slIdx = 1:numel(obj.maps.(mapName{1}))
 
                     % Grab the current map qt_image object
-                    mapObj = obj.maps(slIdx).(mapName{1});
+                    mapObj = obj.maps.(mapName{1})(slIdx);
                     if isempty(mapObj)
                         continue
                     end
 
                     % Create a file name and export the data as DICOM
                     fileName = fullfile(outDir,seDir,...
-                                                     sprintf('%06d.dcm',slIdx));
-                    mapObj.export(fileName);
+                                                 sprintf('%06d.%s',slIdx,fExt));
+                    mapObj.export(fileName,dataFormat);
 
                 end
 
@@ -84,14 +90,17 @@ function varargout = parse_inputs(varargin)
     parser.KeepUnmatched = true;
     parser.addRequired('dataType',@ischar);
     parser.addRequired('outDir',@(x) (exist(x,'dir')==7));
-    %TODO: set up the parser to accept the FORMAT input
+    parser.addOptional('format','dicom',@ischar);
 
     % Parse the inputs
     parser.parse(varargin{:});
     results = parser.Results;
 
     % Perform some additional validation
+    %FIXME: the "format" input is only supported for images. This should be
+    %modified to support ROIs as well.
     results.dataType = validatestring(results.dataType,{'images','maps','rois'});
+    results.format   = validatestring(results.format,{'dicom','raw'});
 
     % Deal the outpus
     varargout = struct2cell(results);

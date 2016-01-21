@@ -1,7 +1,13 @@
-function sliceIdx_postset(obj,src,eventdata)
-%sliceIdx_postset  PostSet event for qt_exam "sliceIdx" property
+function sliceIdx_postset(obj,src,~)
+%sliceIdx_postset  Post-set event for QT_EXAM "sliceIdx" property
 %
 %   sliceIdx_postset(OBJ,SRC,EVENT)
+
+    % Only update the display when the specified exam object is selected
+    % currently
+    if ~obj.isCurrent
+        return
+    end
 
     % Validate the new value of "sliceIdx"
     img = obj.image;
@@ -16,10 +22,10 @@ function sliceIdx_postset(obj,src,eventdata)
         obj.(src.Name) = m(1);
 
         % Notify the user that the upper bound was hit
-        warning(['qt_image:' mfilename ':invalidSliceIndex'],...
-                ['An error occured while setting: "%s"\n',...
-                 '"%s" exceeds the number of image slices, and was reset\n',...
-                 'to the maximum extent of the imaging volume: %d\n'],...
+        warning(['qt_exam:' mfilename ':invalidSliceIndex'],...
+                ['An error occured while setting: "%s"',...
+                 '"%s" exceeds the number of image slices, and was reset',...
+                 'to the maximum extent of the imaging volume: %d'],...
                   src.Name,src.Name,m(1));
         return
     end
@@ -29,7 +35,7 @@ function sliceIdx_postset(obj,src,eventdata)
         obj.exists.maps.current = ~isempty(obj.mapNames);
     end
 
-    % Determine if ROIs exist on the current slice and update the qt_roi object
+    % Determine if ROIs exist on the current slice and update the QT_ROI object
     % "state" property to ensure that the ROIs are visulaized
     roi                     = obj.roi;
     obj.exists.rois.current = any(roi(:).validaterois);
@@ -37,9 +43,9 @@ function sliceIdx_postset(obj,src,eventdata)
         [roi(:).state] = deal('on'); %#ok
     end
 
-    % Update the image display. Since this PostSet event requires that image
+    % Update the image display. Since this post-set event requires that image
     % data exist (the display for which is initialized following the load
-    % operation), simply find the old qt_image object to be replaced from the
+    % operation), simply find the old QT_IMAGE object to be replaced from the
     % QUATTRO figure and update the view on all axes on which that old image is
     % being displayed
     if ~isempty(obj.hFig) && ~isempty(obj.image)

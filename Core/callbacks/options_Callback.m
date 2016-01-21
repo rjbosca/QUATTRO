@@ -1,4 +1,4 @@
-function options_Callback(hObj,eventdata)
+function options_Callback(hObj,~)
 %options_Callback  Callback for handling option requests
 %
 %   options_Callback(H,EVENT) callback for the various option menus of QUATTRO,
@@ -9,7 +9,7 @@ function options_Callback(hObj,eventdata)
     obj = getappdata(gcbf,'qtExamObject');
 
     switch get(hObj,'Tag')
-        case 'menu_exam_options'
+        case 'menu_modeling_options'
             % Displays exam specific options for user
             h = eval([obj.type 'optsgui(obj)']);
 

@@ -27,7 +27,7 @@ function update_controls(hFig,varargin)
                                                 varargin,'UniformOutput',false);
 
     % Get handles structure
-    hs    = guihandles(hFig);
+    hs     = guihandles(hFig);
 
     % Grab some information from the current exams object
     eObj  = getappdata(hFig,'qtExamObject');
@@ -36,8 +36,14 @@ function update_controls(hFig,varargin)
         eType = eObj.type;
     end
 
-    % Perform action
-    cellfun(@(x) eval([x '_controls']),action);
+    % Perform action. As of MATLAB 2015b, the use of CELLFUN with the action
+    % cell causes an error (not being able to locate the sub-functions of
+    % UPDATE_CONTROLS) becuase the ENABLE_CONTROLS, DISABLE_CONTROLS, and
+    % HIDE_CONTROLS are hidden from the call to CELLFUN. A loop as been used
+    % instead
+    for s = action
+        eval([s{1} '_controls']);
+    end
 
     function enable_controls %#ok<*DEFNU>
 
@@ -59,7 +65,7 @@ function update_controls(hFig,varargin)
         if isObj && eObj.exists.images.any
             set([hs.menu_save
                  hs.menu_exam
-                 hs.menu_type
+                 hs.menu_exam_type
                  hs.menu_image
                  hs.menu_save_as
                  hs.menu_save_only
@@ -203,10 +209,10 @@ function update_controls(hFig,varargin)
                  hs.popupmenu_view_plane
                  hs.slider_slice
                  hs.slider_series
-                 hs.axes_main
+                 hs.uipanel_axes_main
                  hs.uipanel_roi_tools
                  hs.uipanel_exams
-                 hs.menu_exam_options], 'Visible', 'off');
+                 hs.menu_modeling_options], 'Visible', 'off');
         end
 
         % Sets ROI specific UI controls

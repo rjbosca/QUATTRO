@@ -9,8 +9,6 @@ function calculatemaps(obj)
     if isempty(eType) || strcmpi(eType,'generic')
         return
     end
-    mObj          = eval([eType '(obj,''autoGuess'',true);']); %non-GUI models object
-    mObj.modelVal = eval(['obj.opts.' eType 'Model']);
 
     % Set the slices on which maps are to be computed
     slInd = obj.sliceIdx(:);
@@ -18,53 +16,31 @@ function calculatemaps(obj)
         slInd = 1:size(obj.imgs,1);
     end
 
-    % Calculate the VIF for DCE and DSC exams
-    if any( strcmpi( class(mObj), {'dce','dsc'} ) )
+    % Grab the modeling object from the exam object
+    mObj = obj.mapModel;
+
+    % Calculate the VIF for pharmacokinetic sub-classes
+    if any(strcmpi( superclasses(mObj),'pk'))
         mObj.vif = obj.calculatevif;
     end
 
     % Loop through all slices
     for slIdx = slInd
 
-        % Create the y-data by combining the series for the current slice and
-        % initialize the mask that will be used to crop the computation window
-        yData = permute(obj.imgs(slIdx,:).img2mat,[3 1 2]);
-        mask  = true(obj.image.imageSize); %initialize the mask
-
-        % Determine if a "mask" exists for the current slice
-        if isfield(obj.rois,'mask')
-            for rIdx = obj.roiIdx.mask
-
-                % Grab the masks for this ROI label
-                masks     = obj.rois.mask(rIdx,slIdx,:);
-                masksMask = masks.validaterois;
-
-                % Determine if any ROIs exist on the current slice
-                if ~any( masksMask(1,1,:) )
-                    continue
-                end
-
-                % Attempt to first locate the mask ROI on the current series
-                %TODO: this code to find a "mask" ROI is really clunky. There
-                %has to be a better way to handle this...
-                if masksMask(1,1,obj.seriesIdx)
-                    mask = mask & masks(1,1,obj.seriesIdx).mask;
-                    continue
-                else
-                    for seIdx = 1:size(masksMask,3)
-                        if masksMask(1,1,seIdx)
-                            mask = mask & masks(1,1,seIdx).mask;
-                            break
-                        end
-                    end
-
-                end
-
-            end
+        % Initialize the mask that will be used to crop the computation window.
+        % When no ROI with the tag "mask" is present, simply compute the entire
+        % image map
+        %TODO: what if there is a mask ROI that is completely false? what if it
+        %is a single voxel mask? How to find the series point where the mask is
+        %located?
+        [~,mask] = obj.getroivals('roi','slice',slIdx,...
+                                        'series',obj.seriesIdx,'tag','mask');
+        if ~any(mask(:))
+            mask(:) = true;
         end
 
         % Update the y-data and fit
-        mObj.y         = yData;
+        mObj.y         = permute(obj.imgs(slIdx,:).img2mat,[3 1 2]);
         mObj.mapSubset = mask;
         argIn          = {};
         if obj.guiDialogs
@@ -98,14 +74,13 @@ function calculatemaps(obj)
             % number of fields associated with the new map
             %FIXME: this is temporary code until I have a more permanent
             %solution to modifying qt_image object "metaData"
-            metaData                   = obj.imgs(slIdx,1).metaData;
-            metaData.WindowCenter      = mapObj.metaData.WindowCenter;
-            metaData.WindowWidth       = mapObj.metaData.WindowWidth;
-            metaData.ImageType         =...
-                          sprintf('PROCESSED\\SECONDARY\\%s',upper(mapObj.tag));
-            metaData.SeriesNumber      = 1000*metaData.SeriesNumber+...
+            mData              = obj.imgs(slIdx,1).metaData;
+            for fld = fieldnames(mapObj.metaData)'
+                mData.(fld{1}) = mapObj.metaData.(fld{1});
+            end
+            mData.SeriesNumber = 1000*mData.SeriesNumber+...
                                              find(strcmpi(mapObj.tag,mapNames));
-            mapObj.metaData            = metaData;
+            mapObj.metaData    = mData;
 
             %TODO: figure out how to handle empty data
 

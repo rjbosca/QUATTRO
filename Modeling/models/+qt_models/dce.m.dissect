@@ -1,0 +1,227 @@
+classdef dce < modelbase
+
+    %------------------------------ Other Methods ------------------------------
+    methods (Hidden = true)
+
+        function val = processFit(obj,val)
+        %processFit  Performs post-processing on fitted data
+        %
+        %   processFit calculates additional model parameters that are not
+        %   otherwise computed by the "fit" method. For DCE objects, the
+        %   additional model parameter kep is calculated in addition to the
+        %   initial area under the curve (IAUC) and blood normalized IAUC
+        %   (BNIAUC). The latter two maps use the value specified in the
+        %   "preEnahcne" property to determine the initial integration bound.
+
+            % Determine if maps are being computed or if the user is performing
+            % single data analysis
+            isSingle = obj.isSingle;
+            results  = obj.results;
+            isSemiQ  = (isempty(val));
+
+            % Calculate kep
+            if all(isfield(results,{'ktrans','ve'}))
+                results.kep = results.ktrans./results.ve;
+            end
+
+            % Gather some data from the current object that will be used for
+            % computations
+            t  = 60*obj.x; %convert time vector from min. to s.
+            y  = obj.yProc;
+            mY = size(y);
+
+
+            %====================================
+            % Calculate the washin/washout curves
+            %====================================
+            % Determine the washout slope using ordinary least squares, forcing
+            % the fit through the peak enhancement point
+            [initSlp,slp,washKin,rSq,mSqErr,res,stdRes] =...
+                                                       deal(nan( size(yPeak) ));
+            for idx = 1:prod(mY(2:end))
+
+                if isempty(ser) || any( isnan(y(:,idx)) ) ||...
+                                 (ser(idx)<obj.enhanceThresh) || isnan(ser(idx))
+                    continue
+                end
+
+                % Create an indexer for the time vector
+                tIdxer               = obj.subset;
+                tIdxer(1:ttp(idx)-1) = false;
+                yUp                  = y(t0Idx:ttp(idx),idx);
+                yWash                = y(tIdxer,idx);
+
+                % Grab the time vector
+                tUpSlp   = t(t0Idx:ttp(idx));
+                tWashSlp = t(tIdxer);
+
+                % Calculate the uptake and washout slopes (shift the x values so
+                % the OLS fit is forced to go throught the maximum signal point)
+                slp(idx)     = olsfi(tWashSlp-min(tWashSlp),yWash,yPeak(idx));
+                initSlp(idx) = olsfi(tUpSlp-max(tUpSlp),yUp,yPeak(idx));
+
+                % When using the semi-quantitative washout model, the non-linear
+                % fitting call is bypassed, so the fitting criteria must be
+                % calculated here
+                if isSemiQ %washout model, create an R^2 map
+                    x0          = [slp(idx);t(ttp(idx));yPeak(idx)];
+                    wFcn        = obj.modelFcn(x0,tWashSlp);
+                    rSq(idx)    = r_squared(tWashSlp,yWash,wFcn);
+                    mSqErr(idx) = mean_sq_err(tWashSlp,yWash,wFcn);
+                    res(idx)    = sum( wFcn-yWash );
+                    stdRes(idx) = sum( std_res(tWashSlp,yWash,wFcn) );
+                    kin         = (wFcn(end)-wFcn(1))/wFcn(1);
+                    washKin(idx) = 0;
+                    if (kin>0.1)
+                        washKin(idx) = 1;
+                    elseif (kin<-0.1)
+                        washKin(idx) = -1;
+                    end
+                end
+            end
+
+            % Calculate the maximum slope in the recirculation window
+            maxSlp = max( diff(y(:))./...
+                         repmat(diff(t),[1 prod(mY(2:end))]), [], 1 );
+
+            % Again, for the semi-quantitative computations, dealing the
+            % goodness-of-fit criteria must be handled here
+            if isSemiQ
+                val = reshape(rSq,[1 mY(2:end)]);
+                if isSingle %MSE, Res, and StdRes only computed for "fitplot"
+                    results.MSE    = mSqErr;
+                    results.Res    = res;
+                    results.StdRes = stdRes;
+                end
+            end
+
+            % Before dealing the results, maps that were calculated in this
+            % function must be reshaped
+            if ~isSingle
+                initSlp = reshape(initSlp,mY(2:end));
+                maxSlp  = reshape(maxSlp,mY(2:end));
+                slp     = reshape(slp,mY(2:end));
+                washKin = reshape(washKin,mY(2:end));
+            end
+
+            % Replace the map arrays (i.e. val) with image objects for each map
+            % and (R^2) or simply attach units to the new single data fit
+            for param = paramNames
+
+                switch param{1}
+                    case 'Kinetics'
+                        pData                      = washKin;
+                        metaData.SeriesDescription = 'Washout Kinetics';
+                    case 'MaxUptake'
+                        pData                      = maxSlp;
+                        metaData.SeriesDescription = 'Maximum initial slope';
+                    case 'Uptake'
+                        pData                      = initSlp;
+                        metaData.SeriesDescription = 'Initial slope';
+                    case 'Washout'
+                        pData                      = slp;
+                        metaData.SeriesDescription = 'Washout';
+                end
+            end
+
+            % Store the structure
+            obj.results = results;
+
+        end %dce.processFit
+
+        function val = processShow(obj,val)
+        %processShow  Perform sub-class specific "show" operations
+        %
+        %   processShow(OBJ) performs display operations specific to the
+        %   dce object OBJ following a call to the modelbase method "show".
+        %   Calls to this method result, if possible, in the display of the VIF,
+        %   contrast agent arrival/recirculation times, and washout fit.
+
+            % Validate that non-map data exist
+            if isempty(obj.y) || isempty(obj.x) || (ndims(obj.y)>2)
+                return
+            end
+
+            % Grab the axis and cache some global values that are used in all
+            % additional plots
+            hAx = findobj(obj.hFig,'Tag','axes_main');
+            xD  = obj.x;
+            xP  = obj.xProc;
+            yP  = obj.yProc;
+
+
+            %==============================
+            % Show the initial uptake slope
+            %==============================
+            if isSemiQ && isfield(obj.results,'Uptake') &&...
+                                   ~isempty(obj.results.TTP.value) &&...
+                                   ~isempty(obj.results.Uptake.value)
+
+                % Try to find the previous uptake plot
+                hUp = findobj(hAx,'Tag','uptakePlot');
+
+                % Create the y-data to be plotted
+                ttpMin  = obj.results.TTP.convert('min');
+                upMin   = obj.results.Uptake.convert('millimole/liter/min');
+                peakIdx = find(xD==ttpMin.value);
+                xData   = xD(t0+1:peakIdx);
+                yData   = upMin.value*(xData-xData(end))+yP(peakIdx);
+
+                % Plot the actual line
+                if isempty(hUp)
+                    plot(hAx,xData,yData,'-k','Tag','uptakePlot');
+                else
+                    set(hUp,'XData',xData,'yData',yData);
+                end
+
+            end
+
+
+            %=======================
+            % Show the washout slope
+            %=======================
+            if isSemiQ && isfield(obj.results,'Washout') &&...
+                                   ~isempty(obj.results.TTP.value) &&...
+                                   ~isempty(obj.results.Washout.value)
+
+                % Try to find a previous plot
+                hWash = findobj(hAx,'Tag','washoutPlot');
+
+                % Create the yData
+                ttpMin  = obj.results.TTP.convert('min');
+                washMin = obj.results.Washout.convert('millimole/liter/min');
+                peakIdx = find(xP==ttpMin.value);
+                x0      = [washMin.value;xP(peakIdx);yP(peakIdx)];
+                xData   = obj.x(peakIdx:end);
+                yData   = obj.plotFcn(x0,xData);
+
+                % Plot the washout curve
+                if isempty(hWash) || ~ishandle(hWash)
+                    plot(hAx,xData,yData,'-k','Tag','washoutPlot');
+                else
+                    set(hWash,'XData',xData,'yData',yData);
+                end
+
+            end
+
+        end %dce.processShow
+
+        function [yc,r2] = results2array(obj)
+
+            % Generate the parameter array
+            yc(:,:,1) = obj.results.ktrans;
+            yc(:,:,2) = obj.results.ve;
+            yc(:,:,3) = obj.results.vp;
+            
+            % Output R^2
+            r2 = obj.results.R_squared;
+
+            % Apply any bounds
+            %TODO: there are currently no bounds for handling kep. This is a
+            %major issue that needs to be addressed.
+
+        end %dce.results2array
+
+    end %methods (Hidden = true)
+
+end %classdef

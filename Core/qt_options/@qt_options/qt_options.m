@@ -1,4 +1,4 @@
-classdef qt_options < hgsetget
+classdef qt_options < modelevents & modelopts
 %QUATTRO options environment
 
 %# AUTHOR    : Ryan Bosca
@@ -7,19 +7,18 @@ classdef qt_options < hgsetget
 %# DEVELOPED : 8.1.0.604 (R2013a)
 %# FILENAME  : qt_options.m
 
-    properties (SetObservable=true,AbortSet=true)
-    % Global options
+    properties (SetObservable,AbortSet)
 
-        % Flag for linking all image axes
+        % Image axes link flag
         %
-        %   If true (default), the linkAxes flag will link all image axes
+        %   "linkAxes", when TRUE (default), enables linking of all image axes
         %   associated with the curent instance of QUATTRO
         linkAxes    = true;
 
         % Last export directory
         %
-        %   Cache containing, as a string, the location of the last directory
-        %   used for exporting images/maps/etc.
+        %   "exportDir" is a string specifying the last directory to which
+        %   images, maps, or ROIs were exported
         exportDir   = pwd;
 
         % Last loaded QUATTRO save file direcotry
@@ -86,58 +85,9 @@ classdef qt_options < hgsetget
 
         % Number of processors
         %
-        %   Integer specifying the number of processors to use for operations
-        %   supporting parallel computation
+        %   "nProcessors" is an integer specifying the number of processors to
+        %   use for computations supporting parallel computation
         nProcessors = 1;
-
-        % Imaging exam type
-        %
-        %   String specifying the imaging exam type (valid options below).
-        %   Although this property is writable, there is no guarantee that
-        %   changes will occur without error, unless changing to 'generic'
-        %
-        %       Exam Strings        Description
-        %       ---------------------------
-        %       'dce'               4D serial dynamic contrast enhanced MRI data
-        %                           derived from T1-weighted imaging sequences.
-        %
-        %       'dsc'               4D serial dynamice susceptibility weighted
-        %                           MRI data derived from T2*-weighted imaging
-        %                           sequences.
-        %
-        %       'dti'               Diffusion tensor MRI data. No computations
-        %                           are supported currently
-        %
-        %       'dw' or 'edwi'      Diffusion weighted MRI data. This differs
-        %                           from 'DTI' exams in that the number of
-        %                           diffusion encoding directions is less than
-        %                           6. Computation of the ADC or IVIM parameters
-        %                           is supported.
-        %
-        %       'gsi'               Dual energy CT. No computations are
-        %                           supported currently
-        %
-        %       'multiflip'         Variable flip angle MRI data used to
-        %                           estimate T1
-        %
-        %       'multite'           Variable echo time MRI data used to estimate
-        %                           T2
-        %
-        %       'multiti'           Multiple inversion time MRI data used to
-        %                           estimate T1
-        %
-        %       'multitr'           Multiple repetition time (i.e. saturation
-        %                           recovery) used to estimate T1
-        %
-        %       'surgery'           Mode used to navigate 3D image data sets in
-        %                           3 orthogonal planes (axial, coronal,
-        %                           sagittal), dropping points for visualization
-        %                           and surgical planning purposes
-        %
-        %      ('generic')          Default exam type used for navigating image
-        %                           data sets. No computations are supported
-        %                           currently.
-        examType    = 'generic';
 
         % Image scaling factor (viewing purpuses only)
         %
@@ -145,6 +95,13 @@ classdef qt_options < hgsetget
         %   means of creating smoother images for visualization, although speed
         %   is sacrificed.
         scale        = 1;
+
+        % Selected model sub-class
+        %
+        %   "modelClass" is a structure containing fields names corresponding to
+        %   the QUATTRO exam types defined in the qt_models package. Each field
+        %   contains a string specifying the model selected currently
+        modelClass = struct([]);
 
 
         % Parameter map/modeling options
@@ -235,52 +192,10 @@ classdef qt_options < hgsetget
         %   Default: 0.5
         r2Threshold = 0.5;
 
-        % Gd-DTPA r1 relaxivity in [/sec/mM]
-        %
-        %   Default: 4.9
-        r1Gd         = 4.9;
-
         % Gd-DTPA r2 relaxivity in [/sec/mM]
         %
         %   Default: 5.9
         r2Gd         = 5.9;
-
-        % Number of pre-contrast images
-        %
-        %   Number of pre-contrast images. This option determines the number of
-        %   image frames considered in the computation of pre-contrast signal
-        %   intensity, and is currently only used in DCE and DSC models.
-        %
-        %   Default: 6
-        preEnhance    = 6;
-
-        % Number of pre-steady state images to ignore
-        %
-        %   In certain applications, such as DCE and DSC, steady-state imaging
-        %   may be achieved at some point in the series beyond the first frame.
-        %   This option is used to control what images are ignored in
-        %   computations.
-        %
-        %   Default: 0
-        preSteadyState = 0;
-
-        % Minimum enhancement threshold
-        %
-        %   Fractional enhancement required for performing quantitation in DCE
-        %   applications. Enhancement is defined as the ratio of signal
-        %   intensity change from baseline to the baseline signal intensity.
-        %   Values below this threshold are ignored in the computation of maps.
-        enhanceThresh = 0.5;
-
-        % Arterial hematocrit
-        %
-        %   Default: 0.45
-        hctArt        = 0.45;
-
-        % Capillary hematocrit
-        %
-        %   Default: 0.25
-        hctCap        = 0.25;
 
         % Pharmacokinetic units
         %
@@ -295,47 +210,6 @@ classdef qt_options < hgsetget
         %   Default: 1
         dceUnits = 1;
 
-        % Blood T10 (units: milliseconds)
-        %
-        %   Default: 1440 ms
-        bloodT10 = 1440;
-
-        % Tissue T10 (units: milliseconds)
-        %
-        %   Default: 1000 ms
-        tissueT10 = 1000;
-
-        % T1 correction flag for DCE computations
-        %
-        %   When "t1Correction" is true, estimation of [Gd] is performed based
-        %   on the data available to QUATTRO (e.g., single T10 values or T10
-        %   maps). Otherwise, the [Gd] concentration is cacluated using delta
-        %   S.I.
-        %
-        %   Default: false
-        t1Correction = false;
-
-        % Tissue density
-        %
-        %   Density of tissue (units: [g/mL]) to be modeled. For brain tissue,
-        %   the default value is for brain tissue: 1.04
-        density = 1.04;
-
-        % [Gd] proportionality constant
-        %
-        %   A scalar value providing the proportionality constant to convert DSC
-        %   signal intensity to [Gd] concentration using the relationship,
-        %   -k/TE*log(S(t)/S0), where k is the proportionality constant. The
-        %   default value is 1.
-        dscK = 1;
-
-        % Recirculation cut-off
-        %
-        %   A scalar value specifying the last position in the time vector for
-        %   which first-pass tracer kinetics should be used. This value is
-        %   preEnhance+5 by default.
-        recirc  = 10;
-
         % Time vector shift
         %
         %   "timeShift" is a scalar or vector value specifying the amount of
@@ -343,141 +217,6 @@ classdef qt_options < hgsetget
         %   shifted. This is used, for example, when processing clinical breast
         %   MRI exams to shift the data points to the center of k-space
         timeShift = 0;
-
-        % DSC-MRI model value
-        %
-        %   DSC computations currently support first pass tracer kinetics. Valid
-        %   model values and associated descriptions are as follows:
-        %
-        %       Model Value     Description
-        %       ---------------------------
-        %            1          First-pass kinetics extracted from a
-        %                       gamma-variate fit and subsequent integration 
-        dscModel = 1;
-
-        % DCE-MRI model value
-        %
-        %   DCE computations employ pharmacokinetic models and semi-quantitative
-        %   descriptors to produce parameter maps. Valid model values and
-        %   associated descriptions are as follows:
-        %
-        %       Model Value     Description
-        %       ---------------------------
-        %            1          Two parameter general kinetic model
-        %                       (Tofts-Kermode model)
-        %
-        %            2          Three parameter general kinetic model
-        %
-        %   Default: 1
-        dceModel = 1;
-
-        % Diffusion-weighted model value
-        %
-        %   DW computations employ the intra-voxel incoherent motion model (or
-        %   some simplificiation) to calcaulte diffusion/perfusion parameters.
-        %   Valid model values and associated descriptions are as follows:
-        %
-        %       Model Value     Description
-        %       ---------------------------
-        %            1          Simple single exponential model including terms
-        %                       for the ADC and S0
-        %
-        %            2          Full IVIM model. ADC, S0, pseudo-diffusion (D*),
-        %                       perfusion fraction (k), and kurtosis (K).
-        %
-        %            3          IVIM excluding psedo-diffusion
-        %
-        %            4          Linearized single exponential model
-        dwModel = 1;
-
-        % DTI model value (not implemented)
-        %
-        %   Diffusion tensor is currently unsupported.
-        %TODO: This is simply a placeholder
-        dtiModel = 1;
-
-        % Multiple TE relaxometry model values
-        %
-        %   T2 computations are performed using one of two exponential models.
-        %   Valid model values and associated descriptions are as follows:
-        %
-        %       Model Value     Description
-        %       ---------------------------
-        %            1          Single exponential decay including T2 and S0.
-        %
-        %            2          Single exponential decay modeling R2 instead of
-        %                       T2
-        %
-        %   Default: 1
-        multiteModel = 1;
-
-        % Multiple TI relaxometry model values
-        %
-        %   T1 computations are performed using one of two variable inversion
-        %   time (VTI) spin echo (SE) models. Valid model values and associated
-        %   descriptions are as follows:
-        %
-        %       Model Value     Description
-        %       ---------------------------
-        %            1          VTI SE model assuming an inversion flip angle of
-        %                       180 deg. T1 and S0 are modeled
-        %
-        %            2          Same as 1, except R1 is modeled in lieu of T1
-        %
-        %            3          VTI SE modeling with an additional free
-        %                       parameter for the inversion flip angle. T1, S0,
-        %                       and the flip angle are modeld.
-        %
-        %            4          Same as 4, except R1 is modeled in lieu of T1
-        %
-        %   Default: 1
-        multitiModel  = 1;
-
-        % Multiple TR (saturation recovery) relaxometry model values
-        %
-        %   T1 computations are performed using a spin echo saturation recovery
-        %   signal intensity model. Valid model values and associated
-        %   descriptions are as follows:
-        %
-        %       Model Value     Description
-        %       ---------------------------
-        %            1          Saturation recovery incorporating T1 and S0
-        %
-        %            2          Same as 1, except R1 is modeling in lieu of T1
-        %
-        %   Default: 1
-        multitrModel = 1;
-
-        % Multiple flip angle relaxometry model values
-        %
-        %   T1 computations are performed using a fast spoiled gradient echo
-        %   signal intensity model. Valid model values and associated
-        %   descriptions are as follows:
-        %
-        %       Model Value     Description
-        %       ---------------------------
-        %            1          FSPGR incorporating T1 and S0
-        %
-        %            2          Same as 1, except R1 is modeling in lieu of T1
-        %
-        %   Default: 1
-        multiflipModel = 1;
-
-        % Generic QUATTRO exam model value
-        %
-        %   This is simply a placeholder. "genericModel" must equal 1
-        genericModel = 1;
-
-        % Surgery QUATTRO exam model value
-        %
-        %   This is simply a placeholder. "surgeryModel" must equal 1
-        surgeryModel = 1;
-
-        % Polarity correction flag for VTI computations
-        %
-        %   When true (default), polarity correction is performed on magnitude
-        %   signal intensities
-        invertIr = true;
 
         % Multi-slice map computation flag
         %
@@ -616,11 +355,8 @@ classdef qt_options < hgsetget
 
     end
 
-    properties (SetAccess='protected')
+    properties (SetAccess='protected',Transient)
     % Internal directories, configuration file, and QUATTRO handle properties
-
-        % Location of QUATTRO.m on current system
-        guiDir  = qt_path;
 
         % Location of the user's application directory
         appDir  = qt_path('appdata');
@@ -636,7 +372,7 @@ classdef qt_options < hgsetget
 
     end
 
-    properties (SetAccess='protected',Hidden=true,SetObservable=true,AbortSet=true)
+    properties (SetAccess='protected',Hidden,SetObservable,AbortSet)
 
         % Flag specifying the DICOM dictionary
         %
@@ -644,28 +380,9 @@ classdef qt_options < hgsetget
         %   of the "dicomDict" property is MATLAB's factory default
         isDfltDict = true;
 
-        % Current MATLAB version
-        %
-        %   "matlabVer" is a stucture containing the fields for the MATLAB
-        %   version, release name, and release data
-        matlabVer
-
-        % QUATTRO path cache
-        %
-        %   "qtPathCache" is a cell array of strings containing system directory
-        %   locations of all necessary QUATTRO files
-        qtPathCache
-
     end
 
-    % Wrapper properties
-    properties (Dependent=true)
-
-        %Same as dwModel, but handles GE eDWI acquisitions
-        edwiModel
-
-        %Proxy for exam model # (e.g. for DCE, modelVal = dceModel)
-        modelVal
+    properties (Dependent)
 
         % Lower R1 bound in [ms^-1]
         %
@@ -689,7 +406,7 @@ classdef qt_options < hgsetget
 
     end
 
-    properties (Constant,Hidden=true)
+    properties (Constant,Hidden)
 
         % Warning information for set methods
         wrnid = 'QUATTRO:options:invalidOption';
@@ -729,17 +446,12 @@ classdef qt_options < hgsetget
 
             % Attach the properties' listeners
             addlistener(obj,'dicomDict',     'PostSet',@obj.dicomDict_postset);
-            addlistener(obj,'bloodT10',      'PostSet',@updatemodels);
-            addlistener(obj,'hctArt',        'PostSet',@updatemodels);
             addlistener(obj,'hctCap',        'PostSet',@updatemodels);
-            addlistener(obj,'invertIr',      'PostSet',@updatemodels);
-            addlistener(obj,'preEnhance',    'PostSet',@updatemodels);
-            addlistener(obj,'preSteadyState','PostSet',@updatemodels);
-            addlistener(obj,'r1Gd',          'PostSet',@updatemodels);
             addlistener(obj,'r2Gd',          'PostSet',@updatemodels);
-            addlistener(obj,'recirc',        'PostSet',@updatemodels);
-            addlistener(obj,'tissueT10',     'PostSet',@updatemodels);
-            addlistener(obj,'t1Correction',  'PostSet',@updatemodels);
+
+            % Attach the event listeners for the events defined in the class
+            % "modelevents"
+            addlistener(obj,'updateModel',@updatemodels);
 
         end %qt_options
 
@@ -748,17 +460,6 @@ classdef qt_options < hgsetget
 
     %------------------------------- Get Methods -------------------------------
     methods
-
-        function val = get.edwiModel(obj)
-            val = obj.dwModel;
-        end %get.edwiModel
-
-        function val = get.modelVal(obj)
-
-            % Get the model value from the specific exam
-            val = obj.([lower(obj.examType) 'Model']);
-
-        end %get.modelVal
 
         function val = get.r1Min(obj)
             val = 1/obj.t1Max;
@@ -825,17 +526,6 @@ classdef qt_options < hgsetget
             end
 
         end %set.dicomDict
-
-        function set.examType(obj,val)
-            if obj.invldc(val)
-                warning(obj.wrnid,obj.wrnc,'examType',obj.examType,val)
-                return
-            end
-
-            % Set the value and dependent values
-            obj.examType = lower(val);
-
-        end %set.examType
 
         function set.importDir(obj,val)
             if obj.invldc(val) || ~exist(val,'dir')
@@ -942,32 +632,6 @@ classdef qt_options < hgsetget
                 obj.saveFile = val;
             end
         end %set.saveDir
-
-        % Model selection
-        function set.dscModel(obj,val)
-            if obj.invldn(val) || ~any(val==1)
-                warning(obj.wrnid,obj.wrnn,'dscModel',obj.dscModel);
-            else
-                obj.dscModel = val;
-            end
-        end %set.dscModel
-        function set.multitiModel(obj,val)
-            if obj.invldn(val) || ~any(val==1:4)
-                warning(obj.wrnid,obj.wrnn,'multitiModel',obj.multitiModel);
-            else
-                [obj.modelVal,obj.multitiModel] = deal(val);
-                if any(val==1:2)
-                    obj.flipAngleMap = false;
-                end
-            end
-        end %set.multitiModel
-        function set.edwiModel(obj,val)
-            if obj.invldn(val) || ~any(val==1:3)
-                warning(obj.wrnid,obj.wrn,'dwModel',obj.dwModel,val);
-            else
-                obj.dwModel = val;
-            end
-        end %set.edwiModel
             
 
         % Modeling options
@@ -999,41 +663,6 @@ classdef qt_options < hgsetget
                 obj.faMax = val;
             end
         end %set.faMax
-        function set.preEnhance(obj,val)
-            if obj.invldn(val) || val<0 || isinf(val)
-                warning(obj.wrnid,obj.wrnn,'preEnhance',obj.preEnhance,val)
-            elseif obj.preEnhance~=val
-                obj.preEnhance = val;
-            end
-        end %set.preEnhance
-        function set.enhanceThresh(obj,val)
-            if obj.invldn(val) || val<0
-                warning(obj.wrnid,obj.wrnn,'enhanceThresh',obj.enhanceThresh,val)
-            else
-                obj.enhanceThresh = val;
-            end
-        end %set.enhanceThresh
-        function set.preSteadyState(obj,val)
-            if obj.invldn(val) || val<0 || isinf(val)
-                warning(obj.wrnid,obj.wrnn,'preSteadyState',obj.preSteadyState,val)
-            elseif obj.preSteadyState~=val
-                obj.preSteadyState = val;
-            end
-        end %set.preSteadyState(obj,val)
-        function set.bloodT10(obj,val)
-            if obj.invldn(val) || val<0
-                warning(obj.wrnid,obj.wrnn,'bloodT10',obj.bloodT10,val)
-            elseif obj.bloodT10~=val
-                obj.bloodT10 = val;
-            end
-        end %set.bloodT10
-        function set.r1Gd(obj,val)
-            if obj.invldn(val) || val<=0
-                warning(obj.wrnid,obj.wrnn,'r1Gd',obj.r1Gd,val);
-            else
-                obj.r1Gd = val;
-            end
-        end %set.r1Gd
         function set.r2Gd(obj,val)
             if obj.invldn(val) || val<=0
                 warning(obj.wrnid,obj.wrnn,'r2Gd',obj.r2Gd,val);
@@ -1041,27 +670,6 @@ classdef qt_options < hgsetget
                 obj.r2Gd = val;
             end
         end %set.r2Gd
-        function set.hctArt(obj,val)
-            if obj.invldn(val) || val<0 || val>1
-                warning(obj.wrnid,obj.wrnn,'hctArt',obj.hctArt,val);
-            else
-                obj.hctArt = val;
-            end
-        end %set.hctArt
-        function set.hctCap(obj,val)
-            if obj.invldn(val) || val<0 || val>1
-                warning(obj.wrnid,obj.wrnn,'hctCap',obj.hctCap,val);
-            else
-                obj.hctCap = val;
-            end
-        end %set.hctCap
-        function set.invertIr(obj,val)
-            if isempty(val) || isnan(val) || ~any(val==0:1)
-                warning(obj.wrnid,obj.wrnn,'invertIr',obj.invertIr,val);
-            elseif obj.invertIr~=val
-                obj.invertIr = val;
-            end
-        end %set.invertIr
         function set.kepMin(obj,val)
             if obj.invldn(val)|| val<0 || val>=obj.kepMax
                 warning(obj.wrnid,obj.wrnn,'kepMin',obj.kepMin,val);
@@ -1090,20 +698,6 @@ classdef qt_options < hgsetget
                 obj.ktransMax = val;
             end
         end %set.ktransMax
-        function set.recirc(obj,val)
-            if obj.invldn(val) || val<0 || isinf(val)
-                warning(obj.wrnid,obj.wrnn,'recirc',obj.recirc,val)
-            elseif obj.preEnhance~=val
-                obj.recirc = val;
-            end
-        end %set.recirc
-        function set.tissueT10(obj,val)
-            if obj.invldn(val) || val<=0
-                warning(obj.wrnid,obj.wrnn,'tissueT10',obj.tissueT10,val);
-            else
-                obj.tissueT10 = val;
-            end
-        end %set.tissueT10
         function set.veMin(obj,val)
             if obj.invldn(val) || val<0 || val>=obj.veMax
                 warning(obj.wrnid,obj.wrnn,'veMin',obj.veMin,val);
@@ -1132,13 +726,6 @@ classdef qt_options < hgsetget
                 obj.vpMax = val;
             end
         end %set.vpMax
-        function set.t1Correction(obj,val)
-            if isempty(val) || isnan(val) || ~any(val==0:1)
-                warning(obj.wrnid,obj.wrnn,'t1Correction',obj.t1Correction,val);
-            elseif obj.t1Correction~=val
-                obj.t1Correction = val;
-            end
-        end %set.t1Correction
         function set.t1Min(obj,val)
             if obj.invldn(val) || val<0 || val>=obj.t1Max
                 warning(obj.wrnid,obj.wrnn,'t1Min',obj.t1Min,val);

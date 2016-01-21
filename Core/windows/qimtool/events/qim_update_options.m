@@ -1,31 +1,39 @@
-function qim_update_options(src,eventdata)
-%qim_update_options  Modeling GUI PostSet event handler for "guess", "autoGuess"
+function qim_update_options(src,~)
+%qim_update_options  Modeling GUI PostSet event handler parameter options
 %
 %   qim_update_options(SRC,EVENT)
 
     % Grab the modeling object
-    obj = eventdata.AffectedObject;
-    if isempty(obj.hFig) || ~ishandle(obj.hFig)
+    if isempty(src.hFig) || ~ishandle(src.hFig)
         return
     end
 
     % Find the parameter options table
-    hTable = findobj(obj.hFig,'Tag','table_parameter_options');
+    hTable = findobj(src.hFig,'Tag','table_parameter_options');
     if isempty(hTable)
         return
     end
 
-    % Grab the table data from the specified new property and update according to
-    % the new value
-    data = get(hTable,'Data');
-    if any( strcmpi(src.Name,{'guess','autoGuess','bounds'}) )
-        data(:,1)       = num2cell(obj.guess);
-        data(:,2:end-1) = num2cell(obj.bounds);
-    else
-        error('qt_models:update_options:invalidCaller','%s %s %s, %s.',...
-              'Only PostSet calls to',mfilename,'from "autoGuess", "guess"',...
-              'and "bounds" are allowed');
-    end
+    % Initialize the workspace
+    data     = get(hTable,'Data');
+    nParams  = numel(src.nlinParams);
+    pBounds  = cellfun(@(x) src.paramBounds.(x),src.nlinParams,...
+                                                         'UniformOutput',false);
+    pBounds  = reshape(cell2mat(pBounds),[],nParams)';
+    pGuess   = cellfun(@(x) src.paramGuess.(x),src.nlinParams,...
+                                                         'UniformOutput',false);
+    cEdit    = get(hTable,'ColumnEditable');
+    cEdit(1) = ~src.autoGuess;
+
+    % Update the parameter bounds and guesses
+    data(:,1)     = pGuess(:);
+    data(:,2:end) = num2cell(pBounds);
+
+    % Update the "ColumnEditable" property according to the value of the
+    % modeling object's "autoGuess" property
+    set(hTable,'ColumnEditable',cEdit);
+
+    % Finally, store the table data
     set(hTable,'Data',data);
 
 end %qim_update_options

@@ -1,11 +1,18 @@
-function seriesIdx_postset(obj,src,eventdata)
-%seriesIdx_postset  PostSet event for qt_exam "seriesIdx" property
+function seriesIdx_postset(obj,src,~)
+%seriesIdx_postset  Post-set event for the QT_EXAM "seriesIdx" property
 %
 %   seriesIdx_postset(OBJ,SRC,EVENT)
+
+    % Only update the display when the specified exam object is selected
+    % currently
+    if ~obj.isCurrent
+        return
+    end
 
     % Validate the new value by attempting to grab one of the images
     img = obj.image;
     if isempty(img) && ~isempty(obj.imgs)
+
         % Grab the size of the image stack to enforce the upper bound on the
         % slice index
         m = size(obj.imgs);
@@ -21,10 +28,11 @@ function seriesIdx_postset(obj,src,eventdata)
                  '"%s" exceeds the number of images in the series, and\n',...
                  ' was reset to the maximum extent of the imaging volume: %d\n'],...
                   src.Name,src.Name,m(2));
+
         return
     end
 
-    % Determine if ROIs exist on the current slice and update the qt_roi object
+    % Determine if ROIs exist on the current slice and update the QT_ROI object
     % "state" property to ensure that the ROIs are visulaized
     roi                     = obj.roi;
     obj.exists.rois.current = any(roi(:).validaterois);
@@ -32,9 +40,9 @@ function seriesIdx_postset(obj,src,eventdata)
         [roi(:).state] = deal('on'); %#ok
     end
 
-    % Update the image display. Since this PostSet event requires that image
+    % Update the image display. Since this post-set event requires that image
     % data exist (the display for which is initialized following the load
-    % operation), simply find the qt_image object from the QUATTRO figure and
+    % operation), simply find the QT_IMAGE object from the QUATTRO figure and
     % replace the old views with the new view at the specified "sliceIdx"
     % position
     if ~isempty(obj.image)

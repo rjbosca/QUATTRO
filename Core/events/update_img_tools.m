@@ -62,15 +62,13 @@ function update_img_tools(src,eventdata)
                                  'Value',1,...
                                  'Visible','off');
         end
-        set(hs.axes_main,'Visible','on',...
-                         'XTick',[],...
-                         'YTick',[]);
 
         % Update the exams pop-up menu
         set(hs.popupmenu_exams,'Visible','on');
 
         % Make the the exams and ROI panels visible
         set([hs.uipanel_exams
+             hs.uipanel_axes_main
              hs.uipanel_roi_tools],'Visible','on');
 
     else %images do not exist
@@ -78,7 +76,7 @@ function update_img_tools(src,eventdata)
              hs.uipanel_roi_tools
              hs.slider_series
              hs.slider_slice
-             hs.axes_main],'Visible','off');
+             hs.uipanel_axes_main],'Visible','off');
     end
 
 end %update_img_tools

@@ -6,12 +6,12 @@ function gui_sliceIdx_postset(src,eventdata)
     % Update the slice slider's position if needed
     obj     = eventdata.AffectedObject; %alias
     tag     = 'slider_slice';
-    hSlider = findobj(obj.hFig,'Tag',tag);
+    hSlider = findall(obj.hFig,'Tag',tag);
     if ~isempty(hSlider) && (obj.(src.Name)==getappdata(hSlider,'currentvalue'))
         return
     elseif isempty(hSlider) %no slider found - useful for devs
         warning(['QUATTRO:' mfilename ':missingUIObj'],...
-                 'Unknown UI graphics object with the tag "%s".\n',tag);
+                 'Unknown UI graphics object with the tag "%s".',tag);
         return
     end
 

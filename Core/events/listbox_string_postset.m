@@ -24,7 +24,7 @@ function listbox_string_postset(src,eventdata)
     strs = hList.String;
 
     % Update the properties appropriately
-    set(hList,'Visible','off');
+    set(hList,'Visible','off'); %default
     if ~isempty(strs)
         set(hList,'Visible','on');
     end
@@ -32,10 +32,9 @@ function listbox_string_postset(src,eventdata)
     % Only enable the "Order" UI context menu when there are multiple ROIs
     hContext = get(hList,'UIContextMenu');
     hOrder   = findobj(hContext,'Tag','context_order');
+    set(hOrder,'Enable','off'); %default
     if numel(strs)>1
         set(hOrder,'Enable','on');
-    else
-        set(hOrder,'Enable','off');
     end
 
 end %listbox_string_postset

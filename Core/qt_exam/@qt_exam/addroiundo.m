@@ -1,39 +1,52 @@
-function addroiundo(obj,varargin)
-%addroiundo  Creates an ROI undo structure for the qt_exam object
+function addroiundo(obj,roi,undoType)
+%addroiundo  Creates an ROI undo instance
 %
-%   addroiundo(OBJ,ROI,TYPE) creates an ROI undo structure for the qt_exam
-%   object specified by OBJ, using the qt_roi object ROI and the modification
-%   event specified by TYPE. TYPE is a string, either 'moved' or 'deleted'. The
-%   index data (i.e. ROI index and slice/series location) is derived from the
-%   index properties of the qt_exam object.
+%   addroiundo(OBJ,ROI,TYPE) creates an ROI undo instance for the QT_EXAM object
+%   specified by OBJ, using the QT_ROI object ROI (a member of the QT_EXAM ROI
+%   storage) and the modification event specified by TYPE. TYPE is a string,
+%   either 'moved' or 'deleted'. The newly created instance of the ROI undo is
+%   placed on the undo stack
+%
+%   See also qt_exam.undoroi
 
-    % Parse the inputs
-    if nargin==3
-        [roi,roiType] = deal(varargin{:});
-        nRoi          = numel(roi);
-        index         = cell(nRoi,1);
-        for rIdx = 1:nRoi
-            index{rIdx} = {obj.roiIdx.(roi(rIdx).tag)(rIdx),...
-                                                    obj.sliceIdx obj.seriesIdx};
-        end
-    else
-        error(['qt_exam:' mfilename ':invalidInputs'],'%s\n%s\n',...
-                           'Invalid input syntax.',...
-                           'Type ''qt_exam.addroiundo'' for more information.');
+    narginchk(3,3);
+
+    % Determine the number of ROIs. For arrays, call this method via ARRAYFUN
+    nRoi = numel(roi);
+    if (nRoi>1)
+        arrayfun(@(x) obj.addroiundo(x,undoType),roi);
+        return
     end
 
-    % Validate the inputs: (1) ensure a valid ROI type, (2) ensure that the user
-    % didn't pass the original ROI object
-    roiType   = validatestring(roiType,{'moved','deleted'});
-    isOrigRoi = arrayfun(@(x) any(obj.roi==x),roi);
-    if any(isOrigRoi)
+    % Validate the undo type
+    undoType = validatestring(undoType,{'moved','deleted'});
+
+    % Determine if the ROI is part of the stack (an assumption of this code)
+    if ~isfield(obj.rois,roi.tag)
+        error(['qt_exam:' mfilename ':invalidRoiTag'],...
+              ['"%s" is not an ROI tag on the QT_EXAM object''s ROI stack. ',...
+               'The input ROI must be on the QT_EXAM objects''s stack.'],roi.tag);
+    end
+    roiMask = (roi==obj.rois.(roi.tag));
+    if ~any(roiMask(:))
         error(['qt_exam:' mfilename ':invalidRoi'],...
-              ['The input ROI is the same object as the current ROI.\n',...
-               'A clone (see qt_roi.clone) was created and used instead.\n']);
+              ['The supplied ROI input could not be located on the QT_EXAM ',...
+               'object''s ROI stack. The input ROI must on the stack.']);
     end
 
-    % Create the undo structure to store
-    undo = struct('roi',roi,'type',roiType,'index',{index});
+    % Locate the ROI location
+    [index{1:3}]              = deal(1);
+    [index{1:ndims(roiMask)}] = find(roiMask);
+
+    % Clone the ROI
+    roiClone = roi.createroiundo(undoType);
+
+    % Create the undo structure to store. The index variable should be a
+    % 3-element cell array contained in a cell (for other functions). This might
+    % change in a future release
+    %TODO: is there a way to make "index" a single 3-element cell array instead
+    %of a nested cell???
+    undo = struct('roi',roiClone,'type',undoType,'index',{{index}});
 
     % Grab the current undo structure
     currentUndo = obj.roiUndo;
@@ -43,4 +56,4 @@ function addroiundo(obj,varargin)
         obj.roiUndo = [currentUndo;undo];
     end
 
-end %addroiundo
+end %qt_exam.addroiundo

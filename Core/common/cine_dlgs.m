@@ -26,17 +26,6 @@ switch lower(varargin{1})
                                                           'Processing','Modal');
         add_logo(varargout{1});
 
-    case 'classification_load'
-        f_list = dir(varargin{2}); f_list = {f_list.name};
-        f_list(cellfun(@(x) isempty(strfind(x,'.mat')),f_list) ) = [];
-        f_list(cellfun(@(x) strcmpi(x,'cine_viewer_options.mat'),f_list)) = [];
-        f_list = cellfun(@(x) strrep(x,'.mat',''),f_list,'UniformOutput',false);
-        [sel,ok] = listdlg('ListString',f_list,'SelectionMode','single');
-        varargout{2} = ok && ~isempty(sel);
-        if varargout{2}
-            varargout{1} = f_list{sel};
-        end
-
     case 'classification_name'
         str = inputdlg('Please enter the training data description',...
                        'Classification name?');
@@ -58,26 +47,6 @@ switch lower(varargin{1})
                        'No','Yes');
         varargout{1} = ~(strcmpi(str,'no') || isempty(str));
 
-    case 'delete_roi_label'
-        if ~iscell(varargin{2})
-            varargin{2} = varargin(2);
-        end
-        switch length(varargin{2})
-            case 1
-                cName = varargin{2}{1};
-            case 2
-                cName = [varargin{2}{1} ' and ', varargin{2}{2}];
-            otherwise
-                cName = '';
-                for i = 1:length(varargin{2})-1
-                    cName = [cName varargin{2}{i} ', '];
-                end
-                cName = [cName 'and ' varargin{2}{end}];
-        end
-        str = questdlg({'Delete all data from ', [cName '?']},...
-                       'Delete Contour', 'Yes', 'No', 'Yes');
-        varargout{1} = ~(strcmpi(str,'no') || isempty(str));
-
     case 'export_maps'
         [varargout{1:2}] = listdlg('PromptString', 'Select maps to export',...
                                    'ListString',varargin{2});
@@ -94,11 +63,6 @@ switch lower(varargin{1})
                                    'ListString', varargin{2},...
                                    'Name','ROI Export');
 
-    case 'import_dicom'
-        varargout{1} = uigetdir(varargin{2},...
-                         'Select the folder containing all DICOM images.');
-        varargout{2} = ~isnumeric( varargout{1} ) && isdir( varargout{1} );
-
     case 'map_type'
         valid_types = {'ADC','Frac. Aniso.','Min Eigen','Med Eigen','Max Eigen'};
         map_names = {'adc','fa','mineig','medeig','maxeig'};
@@ -106,25 +70,6 @@ switch lower(varargin{1})
         varargout{2} = ok;
         if varargout{2}
             varargout{1} = map_names{slct};
-        end
-    case 'multi_param_select'
-        prompt = ['Select ' varargin{2} ' to use:'];
-        name = [varargin{2} ' selection'];
-
-        % Converts vals from row to column vector
-        if ~(size(varargin{3},2)==1 && size(varargin{3},1)~=1)
-            varargin{3} = varargin{3}';
-        end
-        varargin{3} = num2str(varargin{3});
-
-        % Prompts user
-        [selected,ok] = listdlg('PromptString',prompt,...
-                                'SelectionMode','multiple',...
-                                'ListString',varargin{3}, 'Name',name);
-        varargout{2} = ok && ~isempty(selected) && length(selected) > 1;
-        if varargout{2}
-            varargout{1} = false(1,size(varargin{3},1));
-            varargout{1}(selected) = true;
         end
 
     case 'new_guess'

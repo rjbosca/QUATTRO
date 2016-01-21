@@ -1,4 +1,4 @@
-function newdisp(obj,src,eventdata) %#ok
+function newdisp(obj,src,~)
 %newdisp  PostSet event for the "dispFields" qt_image property
 %
 %   newdisp(OBJ,SRC,EVENT)

@@ -1,0 +1,41 @@
+function register(obj)
+%register  Performs image registration
+%
+%   register(OBJ) performs image registration using the properties stored in the
+%   qt_reg object OBJ.
+
+    % Start the timer - let's see how long this takes
+    tic;
+
+    % Create the options structure
+    regOpts = struct('stepSizeMax',obj.stepSizeMax,...
+                     'stepSizeMin',obj.stepSizeMin,...
+                     'numberOfBins',[],...use default. TODO: define QT_REG property for this
+                     'numberOfIter',obj.nIterations,...
+                     'numberOfSamples',obj.nSpatialSamples,...
+                     'numberOfPyramids',obj.multiLevel,...
+                     'intensityThreshold',obj.signalThresh,...
+                     'interpolation',obj.interpolation,...
+                     'similarity',obj.metric,...
+                     'transform',obj.transformation);
+
+    % Perform the registration
+    T = itk_imreg(obj.imTarget,obj.imMoving,regOpts);
+
+    % Grab the final transformation from the iteration history file and store as the
+    % object transformation
+%     obj.wc   = obj.wcHistory{end}(end,:);
+    obj.wc = T;
+
+    % Stop the clock
+    obj.time = toc;
+
+    % Report registration info
+    fprintf('Registration Report\n');
+    fprintf('===================\n');
+    fprintf('Obj Fcn value: %f\n',obj.similarity);
+%     s = repmat('%f, ',1,length(obj.wc)); s(end-1:end) = '\n';
+%     fprintf(['W: ' s],obj.wc);
+    fprintf('Time elapsed (s): %f\n',obj.time);
+
+end %qt_reg.register

@@ -68,7 +68,7 @@ function mhawrite(varargin)
 end %mhawrite
 
 
-%----------------------------------------
+%------------------------------------
 function hdr = parse_inputs(varargin)
 
     if nargin<2

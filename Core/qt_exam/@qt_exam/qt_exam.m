@@ -1,4 +1,4 @@
-classdef qt_exam < handle
+classdef qt_exam < examevents & generalopts
 %Exam storage class
 %
 %   Type "doc qt_exam" for a summary of all properties and methods.
@@ -16,8 +16,7 @@ classdef qt_exam < handle
 %   grab data according to these indices to perform operations on the various
 %   data (i.e. scripting).
 
-    % User accessible exam properties
-    properties (SetObservable=true, AbortSet=true)
+    properties (SetObservable,AbortSet)
 
         % File name of the current exam
         %
@@ -29,41 +28,34 @@ classdef qt_exam < handle
         % Exam object type
         %
         %   "type" is a string specifying the exam type of the current object.
-        %   Currently, the following strings are supported for "type":
+        %   This is any package contained in the nested packages within the
+        %   qt_models package. The following strings are currently supported for
+        %   "type":
         %
         %       Exam Type       Description
         %       --------------------------------
         %       dce             3- or 4-D dynamic-contrast enhanced exam. Serial
-        %                       acquisition of (usually) T1-weighted images
-        %                       following injection of a contrast agent. Allows
-        %                       pharmacokinetic modeling to be performed
+        %                       acquisition of T1-, T2-, or T2*-weighted images
+        %                       following injection of a contrast agent. A
+        %                       number of models, including the general kinetic
+        %                       model and perfusion models such as the indicator
+        %                       dilution theory.
         %
-        %       dsc             4D dynamic-susceptibility contrast MRI exam.
-        %                       Serial acquisition of T2(*)-weighted images
-        %                       following injection of a contrast agent. Allows
-        %                       computation of rCBV, rCBF, MTT and other
-        %                       semi-quantitative descriptors
-        %
-        %       dwi/edwi        Diffusion weighted imaging exam. Using the
+        %       dwi             Diffusion weighted imaging exam. Using the
         %                       serially acquired DW images with varying
         %                       b-values and few than six encoding directions,
         %                       allows computation of ADC and IVIM model
         %                       parameters
         %
-        %       dti             Diffusion tensor imaging exam. Similar to DWI
-        %                       exams, except the principle ADC values and
-        %                       corresponding eigenvectors are computed in
-        %                       addition to anisotropy measures (FA,LI,etc.)
-        %
         %       generic         Standard exam type for simple display and ROI
         %                       analysis. Custom models can be defined for
         %                       quantification.
         %
-        %       multiflip       Variable flip angle T1 technique. Allows
-        %                       computation of T1
+        %       multiflip       Variable flip angle T1 relaxometry technique.
+        %                       Allows computation of T1
         %
-        %       multite         Variable echo time T2 technique. Allows
-        %                       computation of T2
+        %       multite         Variable echo time T2 relaxometry technique.
+        %                       Allows computation of T2
         %
         %       multiti         Variable inversion time T1 technique. Allows
         %                       computation of T1
@@ -75,44 +67,53 @@ classdef qt_exam < handle
         % Exam object name
         %
         %   "name" is a user-specified string that provides a custom (not
-        %   unique) name specifying the qt_exam object in QUATTRO.
-        name
+        %   unique) name specifying the QT_EXAM object in QUATTRO.
+        name = '';
 
         % Indices for accessing data
         %----------------------------
 
         % Current exam position
         %
-        %   examIdx determines which exam is accessed when property updates
-        %   occur internally (e.g. ROIs or images)
+        %   "examIdx" is a numeric scalar that determines which exam is accessed
+        %   when property updates occur internally (e.g. ROIs or images)
         examIdx = 1;
 
         % Current ROI tag selection
         %
         %   "roiTag" is a string specifying the currently activated ROI tag used
         %   to determine the output of the "roi" property. Tags must match one
-        %   of the tags for the current ROIs in the qt_exam object.
+        %   of the tags for the current ROIs in the QT_EXAM object.
         roiTag = 'roi';
  
         % Current ROI selection
         %
         %   "roiIdx" is a structure containing the indices used to determine the
         %   the output of the "roi" property. Fields of this property are based
-        %   on the "tag" property of the ROIs stored in the qt_exam property
+        %   on the "tag" property of the ROIs stored in the QT_EXAM property
         %   "rois"
         roiIdx = struct('roi',0);
 
         % Current slice position
         %
-        %   sliceIdx determines which slice is accessed when property updates
-        %   occur internally (e.g. ROIs or images)
+        %   "sliceIdx" is a numeric scalar that determines which slice is
+        %   accessed when property updates occur internally (e.g. ROIs or
+        %   images)
         sliceIdx = 1;
 
         % Current series position
         %
-        %   seriesIdx determines which series is accessed when property
-        %   updates occur internally (e.g. ROIs or images)
+        %   "seriesIdx" is a numeric scalar that determines which series is
+        %   accessed when property updates occur internally (e.g. ROIs or
+        %   images)
         seriesIdx = 1;
+
+        % Current in-plane voxel position
+        %
+        %   "voxelIdx" is a 1-by-2 numeric vector that specifies the in-plane
+        %   position of the exam. The vector will be empty until a position is
+        %   specified manually or via the data cursor mode.
+        voxelIdx
 
         % Current map selection
         %
@@ -134,28 +135,19 @@ classdef qt_exam < handle
         %likely be a transient property...
         % Model x-value cache
         %
-        %   "modelXValCache" stores the model x-values for the current qt_exam
+        %   "modelXValCache" stores the model x-values for the current QT_EXAM
         %   object. This saves on the number of computations per call to
         %   "modelXVals" and allows the user to sotre values in the dependent
         %   variable "modelXVals"
         modelXValsCache
 
-        % Flag controlling the use of graphical notifications
-        %
-        %   "guiDialogs" is a logical flag that enables (true) or disables
-        %   (false) the use of graphical error and warning messages when working
-        %   with a qt_exam object. Command prompt warnings/errors are still
-        %   issued
-        guiDialogs = true;
-
     end
 
-    % User accessible dependent data properties
-    properties (Dependent, SetAccess='private')
+    properties (Dependent)
 
         % Current image being displayed in QUATTRO.
         %
-        % "image" is a numeric 2D or 3D array of the data from the qt_image
+        % "image" is a numeric 2D or 3D array of the data from the QT_IMAGE
         % object being displayed in QUATTRO. By default, this image is taken
         % from the general image storage with no alterations. If image
         % registrations are loaded and being applied, this image will be the
@@ -170,7 +162,7 @@ classdef qt_exam < handle
 
         % Current parameter map
         %
-        %   "map" returns the current qt_image object storing the specified map
+        %   "map" returns the current QT_IMAGE object storing the specified map
         %   data property based on the current selection parameters of QUATTRO
         %   (i.e. slice and map selection)
         map
@@ -202,46 +194,59 @@ classdef qt_exam < handle
 
         % Current available ROI names
         %
-        %   "roiNames" returns the name of all available ROIs for the qt_exam
+        %   "roiNames" returns the name of all available ROIs for the QT_EXAM
         %   object
         roiNames
 
     end
 
-    properties (Hidden=true, SetObservable=true)
+    properties (Hidden,SetObservable)
 
         % Image object storage
         %
-        %   "imgs" is a 2D array of qt_image objects stored in the qt_exam
+        %   "imgs" is a 2D array of QT_IMAGE objects stored in the QT_EXAM
         %   object. The array indices correspond to, in order, the slice
         %   location and series location of the image objects.
         imgs = qt_image.empty(1,0);
 
-        wcs  %%%%registered img transformation ~~functionality will change~~
+        % Current exam flag
+        %
+        %   "isCurrent" is a logical scalar specifying the selection state
+        %   of the current exam object. When TRUE, this flag denotes that
+        %   the exam object is currently selected (only in the context of
+        %   the QUATTRO GUI).
+        %
+        %   When running an exam object (or objects) in a standalone mode
+        %   of operation, this flag is not utilized
+        isCurrent = true;
 
         % Parameter maps object storage
         %
-        %   Array of qt_image objects representing parametric maps stored in the
-        %   qt_exam object
-        maps;
+        %   Array of QT_IMAGE objects representing parametric maps stored in the
+        %   QT_EXAM object
+        maps = struct([]);
 
         % QUATTRO options object
         %
         %   qt_options object initialized during the first call to QUATTRO
         opts
-        %TODO: figure out what to do with "opts" when using qt_exam objects at
+        %TODO: figure out what to do with "opts" when using QT_EXAM objects at
         %the command prompt
 
         im_temp; %%%%registered img functionality ~~will change in future~~
 
+        wcs  %%%%registered img transformation ~~functionality will change~~
+
     end
 
-    properties (SetAccess='private')
+    %FIXME: this should have 'protected' set access... It was left open to
+    %accommodate adding large numbers of ROIs
+    properties (Hidden,SetObservable)
 
         % Data existence structure
         %
         %   Structure containing internally modified tags specifying the
-        %   existence of specified data within the qt_exam object. Some fields
+        %   existence of specified data within the QT_EXAM object. Some fields
         %   within the structure are, in fact, other structures.
         exists = struct('any',false,...
                         'images',struct('any',false,'copy',false,'is3D',false),...
@@ -255,18 +260,30 @@ classdef qt_exam < handle
         %   the readiness of certain computations (e.g., maps)
         isReady = struct('maps',false);
 
-    end
+        % Parameter map modeling object
+        %
+        %   "mapModel" is a scalar modeling object that is used for computing
+        %   maps. All creation operations are handled internally within the
+        %   QT_EXAM object in conjunction with the qt_options object
+        mapModel
 
-    properties (SetAccess='protected',Hidden=true,SetObservable=true)
+        % Array of modeling object
+        %
+        %   "models" is a cell array of modeling objects that are used to
+        %   investigate the data set through the quantitative imaging tool
+        %   (QIMTOOL) or manually at the command prompt.
+        %
+        %   See also qt_exam.createmodel
+        models = {};
 
         % ROI object storage
         %
-        %   "rois" is a 4D array of qt_roi objects stored in the qt_exam object.
+        %   "rois" is a 4D array of qt_roi objects stored in the QT_EXAM object.
         %   The corresponding indices of the array represent, in order, the ROI
         %   label, slice location, series location, and ROI number.
         %
         %   When storing ROI data, the properties of the qt_roi object instruct
-        %   the qt_exam object where to store the object. The name of the
+        %   the QT_EXAM object where to store the object. The name of the
         %   incoming ROI object is forced to be the name of all other ROIs at
         %   the corresponding ROI index. A similar operation is performed for
         %   the "tag" property
@@ -283,21 +300,15 @@ classdef qt_exam < handle
         %   "roiUndo" is an array of structures containing cloned qt_roi ROI
         %   objects that have been modified in some fashion (deleted, moved,
         %   resized, etc.) the structure also contains the modification method
-        %   (one of 'deleted' or 'moved') and the qt_exam position where the
+        %   (one of 'deleted' or 'moved') and the QT_EXAM position where the
         %   modification occured
         roiUndo
-
-        % QUATTRO operation flag
-        %
-        %   "isQuattro" is a logical flag specifying whether the registered
-        %   figure handle, "hFig", is an instance of QUATTRO (true)
-        isQuattro = false;
 
         % Vascular input function cache
         %
         %   "vifCache" is a temporary cache for storing the vascular input
         %   function after the time-intensive computations performed by the
-        %   qt_exam method "calculatevif".
+        %   QT_EXAM method "calculatevif".
         vifCache = [];
 
         dicom_trafo;  %transformation matrix to DICOM coordinates
@@ -312,85 +323,49 @@ classdef qt_exam < handle
 
     end
 
-    events
-
-        % Notification of ROI deletion
-        %
-        %   "roiDeleted" should be notified any time an ROI (one or more) is
-        %   deleted by calling the "delete" method of the qt_roi object. This
-        %   does not apply to removing the ROI from the "rois" property
-        roiDeleted
-
-        % Notification of image deletion
-        %
-        %   "imgDeleted" should be notified any time an image (one or more) is
-        %   deleted by calling the "delete" method of the qt_image object. This
-        %   does not apply to removing the image from the "imgs" property
-        imgDeleted
-
-        % Handles ROI to image registrations
-        %
-        %   "registerRois" should be notified when the entire array of qt_roi
-        %   objects stored in the "rois" property requires registration with the
-        %   corresponding stack of qt_image objects in the "imgs" property
-        registerRois        
-
-        % Notification of changes to exam data/type
-        %
-        %   "prepareExam" should be notified any time new images/ROIs are stored
-        %   or the exam type is changed. This event is notified during the
-        %   PostSet events of the qt_exam properties "imgs', "rois", and "type",
-        %   and is designed to be an interface for external applications that
-        %   must perform some operations after all of these properties have been
-        %   populated
-        initializeExam
-
-    end
-
-
     %---------------------------- Class Constructor ----------------------------
     methods
 
         function obj = qt_exam(varargin)
         %qt_exam  Constructs a qt_exam object
         %
-        %   H = qt_exam(FIG) constructs an empty instance of an exam class
+        %   OBJ = qt_exam(FIG) constructs an empty instance of an exam class
         %   object without images, headers, or ROIs, storing only the figure
-        %   handle specified by FIG, and returning the qt_exam object. During
+        %   handle specified by FIG, and returning the QT_EXAM object. During
         %   this process, the figure application data is populated with a number
-        %   of objects on which qt_exam operation relies. All object properties,
+        %   of objects on which QT_EXAM operation relies. All object properties,
         %   such as images and ROIs are set after object construction either
         %   directly or through the methods (most efficient)
         %
         %   Nominally, FIG can be the handle to any figure. This provides direct
-        %   access to using qt_exam as an API for new applications. When QUATTRO
+        %   access to using QT_EXAM as an API for new applications. When QUATTRO
         %   is being used, FIG should be the figure handle for the QUATTRO GUI.
         %
         %   The following list of application data are used when operating
-        %   qt_exam in a graphical mode. Modifying or deleting these data can
+        %   QT_EXAM in a graphical mode. Modifying or deleting these data can
         %   cause QUATTRO to perform unexpectedly
         %
         %       App Data            Description
         %       -------------------------------
-        %       'qtExamObject'      qt_exam object being used currently by the
+        %       'qtExamObject'      QT_EXAM object being used currently by the
         %                           figure specified by FIG
         %
-        %       'qtWorkspace'       Array of qt_exam objects that contain all
+        %       'qtWorkspace'       Array of QT_EXAM objects that contain all
         %                           loaded data to be accessed by the figure.
         %                           The object stored in 'qtExamObject' can be
         %                           accessed from this array using the property
         %                           "examIdx"
         %
         %       'qtOptsObject'      qt_options object that provides support for
-        %                           the current figure. All qt_exam objects in
+        %                           the current figure. All QT_EXAM objects in
         %                           memory rely on this single qt_options object
         %
         %
-        %   H = qt_exam(OBJ) creates a new qt_exam object to be stacked with
-        %   another qt_exam object OBJ. This syntax is primarily used by the
+        %   OBJ = qt_exam(OBJ) creates a new QT_EXAM object to be stacked with
+        %   another QT_EXAM object OBJ. This syntax is primarily used by the
         %   QUATTRO, but can be useful when loading numerous objects.
         %
-        %   H = qt_exam(FILE) loads all data in the QUATTRO save file
+        %   OBJ = qt_exam(FILE) loads all data in the QUATTRO save file
         %   specified by the file name FILE.
 
             % Attach the properties' PreSet listeners
@@ -398,21 +373,23 @@ classdef qt_exam < handle
             addlistener(obj,'roiTag',   'PreSet',@obj.roiTag_preset);
             
             % Attach the properties' PostSet listeners
+            addlistener(obj,'examIdx',  'PostSet',@examIdx_postset);
             addlistener(obj,'hFig',     'PostSet',@obj.hFig_postset);
             addlistener(obj,'imgs',     'PostSet',@obj.imgs_postset);
             addlistener(obj,'maps',     'PostSet',@obj.maps_postset);
-            addlistener(obj,'rois',     'PostSet',@obj.rois_postset);
-            addlistener(obj,'type',     'PostSet',@type_postset);
             addlistener(obj,'roiIdx',   'PostSet',@roiIdx_postset);
+            addlistener(obj,'rois',     'PostSet',@obj.rois_postset);
             addlistener(obj,'roiTag',   'PostSet',@obj.roiTag_postset);
-            addlistener(obj,'examIdx',  'PostSet',@examIdx_postset);
-            addlistener(obj,'sliceIdx', 'PostSet',@obj.sliceIdx_postset);
             addlistener(obj,'seriesIdx','PostSet',@obj.seriesIdx_postset);
+            addlistener(obj,'sliceIdx', 'PostSet',@obj.sliceIdx_postset);
+            addlistener(obj,'type',     'PostSet',@type_postset);
+            addlistener(obj,'voxelIdx', 'PostSet',@voxelIdx_postset);
 
             % Attach event listeners
-            addlistener(obj,'roiDeleted',    @obj.roisdeleted);
             addlistener(obj,'imgDeleted',    @obj.imgsdeleted);
             addlistener(obj,'initializeExam',@initialize);
+            addlistener(obj,'newModel',      @obj.newModel_event);
+            addlistener(obj,'roiDeleted',    @obj.roiDeleted_event);
 
             if nargin && ischar(varargin{1}) && exist(varargin{1},'file')
 
@@ -422,7 +399,8 @@ classdef qt_exam < handle
             elseif (nargin==1) && ishandle(varargin{1}) %base constructor
 
                 % Set the figure
-                obj.hFig = varargin{1};
+                obj.hFig       = varargin{1};
+                obj.guiDialogs = true;
 
             elseif (nargin==1) && strcmpi( class(varargin{1}), 'qt_exam' )
 
@@ -431,7 +409,7 @@ classdef qt_exam < handle
                 obj.guiDialogs = varargin{1}.guiDialogs;
 
             else %no load request was made and no QUATTRO handle was passed so
-                 %load the options and return the qt_exam object
+                 %load the options and return the QT_EXAM object
 
                 obj.opts = qt_options;
 
@@ -466,14 +444,14 @@ classdef qt_exam < handle
 
         function val = get.map(obj)
 
-            % Initialize the qt_image output
+            % Initialize the QT_IMAGE output
             val = qt_image.empty(1,0);
 
             % Get the requested map
-            if obj.mapIdx>0
+            if (obj.mapIdx>0)
                 try
-                    mapTags = fieldnames( obj.maps(obj.sliceIdx) );
-                    val     = obj.maps(obj.sliceIdx).(mapTags{obj.mapIdx});
+                    mapTags = fieldnames(obj.maps);
+                    val     = obj.maps.(mapTags{obj.mapIdx})(obj.sliceIdx);
                 catch ME
                     rethrow(ME)
                 end
@@ -483,12 +461,14 @@ classdef qt_exam < handle
 
         function val = get.mapNames(obj)
 
-            % Initialize cell output
-            val = {};
+            val = {}; %initialize
+            if ~isstruct(obj.maps)
+                return
+            end
 
             % Get the names
             try
-                ms  = struct2cell( obj.maps(obj.sliceIdx) );
+                ms  = struct2cell(obj.maps);
                 ms  = ms( ~cellfun(@isempty,ms) ); %remove non-existent maps
                 val = cellfun(@(x) x.tag,ms, 'UniformOutput',false);
             catch ME
@@ -516,6 +496,16 @@ classdef qt_exam < handle
 
         end %get.metaData
 
+        function val = get.models(obj)
+            val = obj.models;
+            if ~isempty(val)
+                val        = val(cellfun(@isvalid,val));
+                val        = val(cellfun(@(x) ~isempty(x.hFig) &&...
+                                               ishandle(x.hFig),val));
+                obj.models = val;
+            end
+        end %qt_exam.get.models
+
         function val = get.modelXVals(obj)
         %get.modelXVals  Gets the series independent variable value
         %
@@ -523,7 +513,7 @@ classdef qt_exam < handle
         %   current "examType" property value.
 
 
-            % When the value has already been determined for the qt_exam object,
+            % When the value has already been determined for the QT_EXAM object,
             % use that value
             %FIXME: determine how to perform the computations if needed after
             %the cache has already been populated
@@ -572,28 +562,28 @@ classdef qt_exam < handle
 
                 case 'edwi'
 
-                    % Calculates the b-value based on the eDWI flag (eDWI is a
-                    % GE specific acquisition
-                    tagEdwi  = dicomlookup('0043','107F');
-                    tagBVals = dicomlookup('0043','1039');
-                    if isfield(hdrs,tagEdwi)
-
-                        % Prepares the eDWI offset
-                        offset = unique( cell2mat({hdrs(:).(tagEdwi)}) );
-                        offset(offset==0) = [];
-                        if numel(offset) > 1
-                            error(['QUATTRO:' mfilename ':offsetChk'],...
-                                   'The eDWI b-value offset number is not unique.');
-                        end
-                        [hdrs(:).(tagEdwi)] = deal(offset);
+%                     % Calculates the b-value based on the eDWI flag (eDWI is a
+%                     % GE specific acquisition
+%                     tagEdwi  = dicomlookup('0043','107F');
+%                     tagBVals = dicomlookup('0043','1039');
+%                     if isfield(hdrs,tagEdwi)
+% 
+%                         % Prepares the eDWI offset
+%                         offset = unique( cell2mat({hdrs(:).(tagEdwi)}) );
+%                         offset(offset==0) = [];
+%                         if numel(offset) > 1
+%                             error(['QUATTRO:' mfilename ':offsetChk'],...
+%                                    'The eDWI b-value offset number is not unique.');
+%                         end
+%                         [hdrs(:).(tagEdwi)] = deal(offset);
 
                         %TODO: determine how best to remove/store the offset
-                        error('Program this.')
-                    end
+                        error(['QUATTRO:' mfilename ':offsetChk'],'Program this.')
+%                     end
 
-                    % Determine the b-values
-                    val = cell2mat({hdrs.(tagBVals)});
-                    val = val(1,:);
+%                     % Determine the b-values
+%                     val = cell2mat({hdrs.(tagBVals)});
+%                     val = val(1,:);
 
                 case 'multiflip'
 
@@ -646,7 +636,7 @@ classdef qt_exam < handle
             end
 
             % Get size of current image
-            m = obj.image.size;
+            m = obj.image.dimSize;
 
             % Determine QUATTRO position
             ijk = obj.sl_index(:);
@@ -713,8 +703,11 @@ classdef qt_exam < handle
                 % Loop through each ROI index
                 nRoi = size(rs.(fld),1);
                 for rIdx = 1:nRoi
-                    rSub            = rs.(fld)(rIdx,:,:,:);
-                    val.(fld)(rIdx) = unique( {rSub(rSub.validaterois).name} );
+                    rSub = rs.(fld)(rIdx,:,:,:);
+                    str  = unique( {rSub(rSub.validaterois).name} );
+                    if ~isempty(str)
+                        val.(fld)(end+1) = str;
+                    end
                 end
 
             end
@@ -731,9 +724,9 @@ classdef qt_exam < handle
 
             % Validate the input
             if ~isnumeric(val) || (numel(val)>1) || val<1
-                error('qt_exam:invalidExIdx','%s\n%s\n',...
-                      'Attempted to set an invalid value for "examIdx"',...
-                      'No changes were made.');
+                error('qt_exam:invalidExIdx',...
+                      ['Attempted to set an invalid value for "examIdx" ',...
+                       'No changes were made.']);
             end
 
             obj.examIdx = round(val); %round since it's an index
@@ -742,11 +735,12 @@ classdef qt_exam < handle
 
         function set.sliceIdx(obj,val)
 
+            validateattributes(val,{'numeric'},{'nonempty','nonnan','positive'})
             % Validate the input
             if ~isnumeric(val) || (numel(val)>1) || val<1
-                error('qt_exam:invalidSlcIdx','%s\n%s\n',...
-                      'Attempted to set an invalid value for "sliceIdx"',...
-                      'No changes were made.');
+                error('qt_exam:invalidSlcIdx',...
+                      ['Attempted to set an invalid value for "sliceIdx" ',...
+                       'No changes were made.']);
             end
 
             obj.sliceIdx = round(val); %round since it's an index
@@ -758,9 +752,9 @@ classdef qt_exam < handle
             % Validate the input
             if ~isstruct(val)
                 error('qt_exam:invalidRoiIdx',...
-                     ['"roiIdx" must be a structure containing fields that\n',...
-                      'correspond to the ROI tags and each field must\n',...
-                      'contain the respective ROI index.\n']);
+                     ['"roiIdx" must be a structure containing fields that ',...
+                      'correspond to the ROI tags and each field must ',...
+                      'contain the respective ROI index.']);
             end
 
             %TODO: deconstruct the input structure and validate that the fields
@@ -784,24 +778,24 @@ classdef qt_exam < handle
 
         function set.type(obj,val)
 
-            % Validate the input
-            obj.type = validatestring(val,{'dce','dsc','dti','dw','edwi',...
-                                           'gsi','multiflip','multite',...
-                                           'multiti','multitr','surgery',...
-                                                                    'generic'});
+            % Grab the available exam types from the qt_models package and
+            % validate the input
+            mNames   = fieldnames( qt_models.model_info );
+            obj.type = validatestring(val,mNames);
 
         end %set.type
+
+        function set.voxelIdx(obj,val)
+            validateattributes(val,{'numeric'},{'nonempty','vector','positive',...
+                                                  'finite','nonnan','numel',2});
+            obj.voxelIdx = val(:)'; %enforce row vector
+        end %set.voxelIdx
 
     end %set methods
 
 
     %----------------------------- Other Methods -------------------------------
     methods (Static)
-
-        % qt_exam copy method
-        %
-        %   Type "help qt_exam.copyexam" for more information
-        varargout = copyexam(varargin);
 
         % Image import method
         %
@@ -836,6 +830,7 @@ classdef qt_exam < handle
             roiFlds = fieldnames(rs);
             cellfun(@(x) rs.(x)(rs.(x).isvalid).delete,roiFlds);
             notify(obj,'roiDeleted');
+            notify(obj,'roiChanged');
 
             % Delete all of the image objects
             ims = obj.imgs;

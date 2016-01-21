@@ -1,10 +1,7 @@
-function hFig_postset(obj,src,eventdata)
-%hFig_postset  PostSet event for qt_exam property "hFig"
+function hFig_postset(obj,~,~)
+%hFig_postset  Post-set event for QT_EXAM property "hFig"
 %
 %   hFig_postset(OBJ,SRC,EVENT)
-
-    % Set basic existence properties
-    obj.isQuattro = ~isempty(obj.hFig) && strcmpi(get(obj.hFig,'Name'),qt_name);
 
     % Grab the application data. For multi-exam workspaces, 
     exObj   = getappdata(obj.hFig,'qtExamObject');
@@ -25,7 +22,8 @@ function hFig_postset(obj,src,eventdata)
 
     else
         error(['qt_exam:' mfilename ':invalidQuattroAppData'],...
-               'Invalid data detected in the application data ''qtWorkspace''.\n');
+              ['Invalid data detected in the application data ',...
+               '''qtWorkspace''.']);
     end
 
     % When setting a new figure, make sure there is a valid qt_options object
@@ -36,4 +34,8 @@ function hFig_postset(obj,src,eventdata)
     end
     obj.opts = optsObj;
 
-end %qt_examhFig_postset
+    % When using the "hFig" property (i.e., using GUIs), enable the "guiDialogs"
+    % property
+    obj.guiDialogs = true;
+
+end %qt_exam.hFig_postset

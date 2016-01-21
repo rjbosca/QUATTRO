@@ -6,7 +6,7 @@ classdef (ConstructOnLoad) qt_roi < handle
 %   method or property name. For a list of properties or methods, type
 %   "properties qt_roi" or "methods qt_roi", respectively.
 
-    properties (Dependent=true)
+    properties (Dependent)
 
         % ROI vertices
         %
@@ -18,7 +18,7 @@ classdef (ConstructOnLoad) qt_roi < handle
 
     end
 
-    properties (SetObservable=true,AbortSet=true)
+    properties (SetObservable,AbortSet)
 
         % ROI color
         %
@@ -98,7 +98,7 @@ classdef (ConstructOnLoad) qt_roi < handle
 
     end
 
-    properties (SetObservable=true,Hidden=true)
+    properties (SetObservable,Hidden)
 
         % Normalized position array
         %
@@ -122,7 +122,7 @@ classdef (ConstructOnLoad) qt_roi < handle
 
     end
 
-    properties (SetAccess='private',SetObservable=true)
+    properties (SetAccess='private',SetObservable)
 
         % ROI geometric type
         %
@@ -136,17 +136,24 @@ classdef (ConstructOnLoad) qt_roi < handle
 
     end
 
-    properties (Access='private',Hidden=true,Transient=true)
+    properties (Access='private',Hidden,Transient)
 
         % ROI view object storage
         %
-        %   "roiViewObj" is an array of roiview objects. These objects handle
-        %   all events associated with displaying qt_roi data
+        %   "roiViewObj" is an array of ROIVIEW objects. These objects handle
+        %   all events associated with displaying QT_ROI data
         roiViewObj = roiview.empty(0,0);
+
+        % ROI position cache
+        %
+        %   "roiPositionCache" is a cache used to temporarily store the contents
+        %   of the "position" property, usually used in conjunction with the
+        %   "mouseButtonDown" event
+        roiPositionCache
 
     end
 
-    properties (Dependent=true,Hidden=true)
+    properties (Dependent,Hidden)
 
         % Position array scaled to associated image data
         %
@@ -179,7 +186,7 @@ classdef (ConstructOnLoad) qt_roi < handle
 
     end
 
-    properties (SetAccess='private',Hidden=true,SetObservable=true,Transient=true)
+    properties (SetAccess='private',Hidden,SetObservable,Transient)
 
         % Image values
         %
@@ -199,6 +206,12 @@ classdef (ConstructOnLoad) qt_roi < handle
 
 
     events
+
+        % mouseButtonDown  Updates the ROI object following a LMB click
+        mouseButtonDown
+
+        % mouseButtonUp  Updates the ROI object following a LMB unclick
+        mouseButtonUp
 
         % newAxisLimits  Updates the ROI display for new limits
         newAxisLimits
@@ -227,14 +240,14 @@ classdef (ConstructOnLoad) qt_roi < handle
         %
         %       Valid TYPE strings
         %       ------------------
-        %       'rect', 'ellipse', 'poly', or 'spline'
+        %       'ellipse', 'point', 'poly', 'rect', or 'spline'
         %
         %
         %   H = qt_roi(POS,TYPE) creates an ROI of the specified TYPE using the
         %   position vector POS. If the POS is not normalized, also specify the
-        %   property 'scale' to ensure proper display. See also impoly, imrect,
-        %   imellipse, and  imfreehand for information regarding the position
-        %   vector.
+        %   property 'scale' to ensure proper display. For information regarding
+        %   the position vector, see also impoly, imrect, imellipse, imfreehand,
+        %   and impoint
         %
         %   H = qt_roi(FILE) attempts to load the ROIs stored in the QUATTRO
         %   save file specified by FILE. If more than one ROI exists, H will be
@@ -248,14 +261,19 @@ classdef (ConstructOnLoad) qt_roi < handle
 %             addlistener(obj,'fileName','PostSet',@fileName_postset);
             addlistener(obj,'position','PostSet',@obj.position_postset);
             addlistener(obj,'state',   'PostSet',@obj.state_postset);
+            addlistener(obj,'scale',   'PostSet',@obj.scale_postset);
 
             % Attach the events' listeners
-            addlistener(obj,'newAxisLimits',    @obj.newlimits);
+%            addlistener(obj,'newAxisLimits',    @obj.newlimits); TODO: as of 
+%                                                                   7/3/15 this 
+%                                                                   was unused
             addlistener(obj,'newRoiData',       @obj.deconstruct);
-            addlistener(obj,'newManualPosition',@obj.newmanualposition);
+            addlistener(obj,'mouseButtonDown',  @obj.mouseButtonDown_event);
+            addlistener(obj,'mouseButtonUp',    @obj.mouseButtonUp_event);
+            addlistener(obj,'newManualPosition',@obj.newManualPosition_event);
 
             % Parse the inputs
-            if nargin==0
+            if ~nargin
                 return
             end
             [props,vals,fName,hAx] = parse_inputs(varargin{:});
@@ -306,7 +324,7 @@ classdef (ConstructOnLoad) qt_roi < handle
 
                 if numel(obj.roiViewObj)>1
                     error( 'qt_roi:imgVals:multipleImageDisplay',...
-                          ['This ROI appears to be on multiple images.',...
+                          ['This ROI appears to be on multiple images. ',...
                            'No support exists, yet...']);
                 end
 
@@ -436,7 +454,7 @@ classdef (ConstructOnLoad) qt_roi < handle
             end
 
             % Validate that the input is, in fact, a usable file name
-            if exist(s,'file')~=2
+            if (exist(s,'file')~=2)
                 error('qt_roi:loadobj:invalidInput',...
                       '"loadobj" input must be a qt_roi object or valid file.');
             end
@@ -479,6 +497,61 @@ classdef (ConstructOnLoad) qt_roi < handle
     end
 
 
+    %-------------------------------Hidden Methods------------------------------
+    methods (Hidden)
+
+        function undoRoi = createroiundo(obj,undoType)
+        %createroiundo  Creates a clone of the current ROI
+        %
+        %   ROI = createroiundo(OBJ) creates a clone of the current ROI to be
+        %   stored in an "undo" stack
+        %
+        %   ROI = createroiundo(OBJ,TYPE) creates a clone of the current ROI of
+        %   the specified TYPE. Valid strings for the TYPE input are:
+        %
+        %       'deleted'   - creates a clone of 
+
+            % Validate the undo type
+            if (nargin<2)
+                undoType = 'deleted';
+            end
+            undoType = validatestring(undoType,{'deleted','moved'});
+
+            % Initialize the output
+            undoRoi = obj.clone('name','scale','tag');
+
+            % Perform the appropriate "clone" operation
+            if strcmpi(undoType,'moved') && ~isempty(obj.roiPositionCache)
+                undoRoi          = obj.clone('name','scale','tag');
+                undoRoi.position = obj.roiPositionCache;
+            elseif strcmpi(undoType,'moved')
+                undoRoi          = qt_roi.empty(1,0);
+            end
+
+        end %qt_roi.createroiundo
+
+        function tf = hittest(obj,pos)
+        %hittest  Determine if the current ROI was "hit"
+        %
+        %   hittest(OBJ,POS) determines if the current ROI object, OBJ, was
+        %   "hit" by the 2-element position vector POS. POS=[x,y]
+
+            % Grab the verticies of the ROI, which are to be converted to a
+            % bounding box
+            verts = obj.scaledVertices;
+
+            % Create the bounding box, which is given by: [xmin ymin; xmax ymax]
+            bb = [min(verts);max(verts)];
+
+            % Determine if the point, specified by POS, "hit" the ROI
+            tf = (pos(1)>=bb(1,1) && pos(1)<=bb(2,1)) &&... within x bounds
+                 (pos(2)>=bb(1,2) && pos(2)<=bb(2,2));     %within y bounds
+
+        end %qt_roi.hittest
+
+    end
+
+
 end %qt_roi
 
 
@@ -491,7 +564,7 @@ function varargout = parse_inputs(varargin)
     % Determine some information about the input
     inClass       = class(varargin{1});
     isFile         = ischar(varargin{1}) && exist(varargin{1},'file');
-    isQtimgAndType = ~isFile && strcmpi(inClass,'qt_image');
+    isQtImgAndType = ~isFile && strcmpi(inClass,'qt_image');
     isHaxAndType   = ~isFile && strcmpi(inClass,'double') &&...
                                                   any(ishandle(varargin{1}(:)));
 
@@ -510,7 +583,7 @@ function varargout = parse_inputs(varargin)
     parser         = inputParser;
     if isHaxAndType
         parser.addRequired('hAx',@checkAx)
-    elseif isQtimgAndType
+    elseif isQtImgAndType
         parser.addRequired('hAx',@(x) x.isvalid);
     elseif isFile
         parser.addRequired('file',@checkFile);
@@ -519,7 +592,7 @@ function varargout = parse_inputs(varargin)
     end
     if nargin>1 && ~isFile % Grab the ROI type if specified
         varargin{2} = validatestring( strrep(varargin{2},'im',''),...
-                                            {'rect','ellipse','poly','spline'});
+                                    {'rect','ellipse','poly','point','spline'});
         parser.addRequired('type',@ischar);
     end
     for idx = 1:numel(props)
@@ -550,9 +623,9 @@ function varargout = parse_inputs(varargin)
     varargout{2} = struct2cell(results);
 
     % Special syntax if specifying an image: automatically populate properties
-    if isQtimgAndType
+    if isQtImgAndType
         varargout{1}{end+1} = 'scale';
-        varargout{2}{end+1} = varargout{nargout}.imageSize;
+        varargout{2}{end+1} = varargout{nargout}.dimSize;
     end
 
 end %parse_inputs
@@ -579,7 +652,7 @@ function tf = checkFile(f)
     tf = true; %initalize the output
 
     %Validate the input
-    if exist(f,'file')~=2
+    if (exist(f,'file')~=2)
         error('qt_roi:invalidFile','Unable to locate the file:\n%s\n',f);
     end
 

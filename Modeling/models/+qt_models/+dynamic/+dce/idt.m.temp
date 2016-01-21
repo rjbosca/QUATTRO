@@ -1,0 +1,149 @@
+classdef idt < t2w
+
+    properties (Dependent)
+
+        % rCBV normalizing factor
+        %
+        %   alpha is a normalizing factor that accounts for the differences in
+        %   the hematocrit of small and large blood vessels (see "hctCap" and
+        %   "hctArt") and incorporates the tissue density (in [g/mL]).
+        %
+        %
+        %   References
+        %   ----------
+        %
+        %   [1] Calamante F, et al., J. Cereb. Blood Flow Metab., Vol 19 (7),
+        %       pp. 701-735, 1999
+        %
+        %   [2] Tofts P, "Quantitative MRI of the Brain", Ch. 11,
+        %       Chichester, UK: John Wiley & Sons, Ltd, 2003
+        alpha
+
+        % Function used for model fitting
+        %
+        %   Function handle to the current DSC model of the form @(x0,t) f(x0,t)
+        %   where x0 are model parameters and t is the dependent variable (i.e.
+        %   time).
+        %
+        %   Note that uniformly spaced values of t are assumed for this function
+        %   handle. For non-uniformly spaced values, use plotFcn instead
+        modelFcn
+
+        % Function used for plotting the model
+        %
+        %   Function handle to the current DSC convenient for plotting the model
+        %   with the form @(x0,t) f(x0,t).
+        plotFcn
+
+    end
+
+    properties (Constant)
+
+        % Class defintion model name
+        %
+        %   "modelName" is a string containing a short description of the model
+        %   implemented in IDT
+        modelName = 'Indicator Dilution Theory';
+
+        % Non-linear model parameter names
+        %
+        %   "nlinParams" is a cell a array of strings containing the name of
+        %   each model parameter. Valid parameters are:
+        %
+        %       Parameter       Description
+        %       ===========================
+        %       'gammaK'        Gamma variate scaling factor
+        %
+        %       'gammaA'        Gamma variate shape parameter
+        %
+        %       'gammaB'        Gamma variate shape parameter
+        %
+        %       'BAT'           Bolus arrival time in seconds
+        nlinParams = {'gammaK','gammaA','gammaB','BAT'};
+
+    end
+
+
+    %---------------------------- Class Constructor ----------------------------
+    methods
+
+        function obj = idt(varargin)
+        %idt  Class for modeling indicator dilution theory (IDT)
+        %
+        %   OBJ = idt(T,Y,VIF) creates a idt model object for the vector of
+        %   signal intensities, Y, at the time points T using the vascular input
+        %   function VIF.
+        %
+        %   OBJ = idt(QTEXAM) creates a idt modeling object from the data stored
+        %   in the qt_exam object QTEXAM. Associated QUATTRO links are generated
+        %   if available.
+        %
+        %   OBJ = idt(...,'PROP1',VAL1,...) creates a idt modeling object as
+        %   above, initializing the class properties specified by 'PROP1' to
+        %   the value VAL1
+
+            % Construct DSC specific defaults
+            obj.xLabel = 'Time (sec)';
+            obj.yLabel = '[Gd] (mM)';
+
+            %TODO: define a super class for IDT and move this initialization to
+            %that class
+
+            % Initialize the object's parameter units.
+            obj.paramUnits(1).gammaK = '';
+            obj.paramUnits(1).gammaA = '';
+            obj.paramUnits(1).gammaB = '';
+            obj.paramUnits(1).BAT    = 's';
+
+            % Initialize the parameter bounds that are common to all indicator
+            % dilution theory model sub-classes
+            obj.paramBounds(1).gammaK = [0 5/60];
+            obj.paramBounds(1).gammaA = [0 5/60];
+            obj.paramBounds(1).gammaB = [0 1];
+            obj.paramBounds(1).BAT    = [0 1];
+
+            % Initialize the parameter guesses that are common to all indicator
+            % dilution theory model sub-classes
+            obj.paramGuess(1).gammaK = 1;
+            obj.paramGuess(1).gammaA = 1;
+            obj.paramGuess(1).gammaB = 1;
+            obj.paramGuess(1).BAT    = 1;
+
+            % Parse the inputs
+            if nargin
+                qt_models.parse_inputs(obj,varargin{:});
+            end
+
+        end %idt.idt
+
+    end %class constructor
+
+
+    %------------------------------- Get Methods -------------------------------
+    methods
+
+        function val = get.alpha(obj)
+            val = obj.density/( (1-obj.hctArt)/(1-obj.hctCap) );
+        end %idt.get.alpha
+
+        function val = get.modelFcn(~)
+            val = @(x,xdata) gamma_var(x(:),xdata);
+        end %idt.get.modelFcn
+
+        function val = get.plotFcn(obj)
+            val = obj.modelFcn;
+        end %idt.get.plotFcn
+
+        
+    end %get methods
+
+
+    %------------------------------ Other Methods ------------------------------
+    methods (Hidden)
+
+        function val = processGuess(obj,val)
+        end %idt.processGuess
+
+    end %methods (Hidden)
+
+end %idt

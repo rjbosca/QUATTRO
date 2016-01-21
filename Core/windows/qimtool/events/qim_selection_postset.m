@@ -1,5 +1,5 @@
 function qim_selection_postset(src,eventdata)
-%qim_selection_postset  PostSet event handler for slice/series edit boxes
+%qim_selection_postset  Post-set event for slice/series edit boxes
 %
 %   qim_selection_postset(SRC,EVENT) handles PostSet events for the slice/series
 %   edit textboxes and the ROI pop-up menu of the modeling GUI given by the
@@ -15,7 +15,7 @@ function qim_selection_postset(src,eventdata)
         if ~strcmpi(src.Name,'string')
             warning(['QUATTRO:' mfilename ':invalidEditEvent'],...
                     ['Event calls to %s must originate from a "String" ',...
-                     'PostSet event.'],mfilename);
+                     'Post-set event.'],mfilename);
             return
         end
 
@@ -30,7 +30,7 @@ function qim_selection_postset(src,eventdata)
         if ~strcmpi(src.Name,'value')
             warning(['QUATTRO:' mfilename ':invalidEditEvent'],...
                     ['Event calls to %s must originate from a "Value" ',...
-                     'PostSet event.'],mfilename);
+                     'Post-set event.'],mfilename);
             return
         end
 
@@ -55,16 +55,10 @@ function qim_selection_postset(src,eventdata)
         % Grab the modeling and qt_exam objects and the necessary indices
         modObj    = getappdata(hFig,'modelsObject');
         exObj     = getappdata(hFig,'qtExamObject');
-        roiIdx    = get( findobj(hFig,'Tag','popupmenu_roi'), 'Value' );
-        sliceIdx  = getappdata(findobj(hFig,'Tag','edit_slice'),'currentvalue');
-        seriesIdx = getappdata(findobj(hFig,'Tag','edit_series'),'currentvalue');
 
         % Update the data
-        modObj.y = exObj.getroivals(dataMode,@mean,true,...
-                                    'roi',   roiIdx,...
-                                    'series',seriesIdx,...
-                                    'slice', sliceIdx,...
-                                    'tag',   'roi');
+        notify(exObj,'newModelData',...
+                              newModelData_eventdata(modObj.dataMode,'manual'));
 
     end
 

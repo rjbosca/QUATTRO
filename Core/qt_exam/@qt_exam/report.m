@@ -140,7 +140,7 @@ function report(obj,varargin)
 
 
     % ROI summary reporting function
-    function endPos = report_summary %#ok<*STOUT>
+    function endPos = report_summary
 
         % User specifies map types
         eType = obj.type;
@@ -163,7 +163,7 @@ function report(obj,varargin)
         serId = obj.metaData.SeriesNumber;
 
         % Create a qt_models object to perform the fitting
-        mObj = eval([obj.type '(obj,''autoGuess'',true);']);
+        mObj = obj.createmodel('autoGuess',true);
 
         % Prepare the parameters names/units for writing
         prms     = fieldnames(  mObj.paramUnits );
@@ -171,7 +171,7 @@ function report(obj,varargin)
 
         % Write the header
         fprintf(fid,'%%ROI Averaged Modeling - ');
-        fprintf(fid,'%s\n',mObj.modelNames{mObj.modelVal});
+        fprintf(fid,'%s\n',mObj.([eType 'Model']));
         fprintf(fid,'%%Exam/Series\t\tSlice\tROI');
         for prmIdx = 1:numel(prms)
             if isempty( prmUnits{prmIdx} )

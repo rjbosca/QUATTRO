@@ -8,7 +8,7 @@ function [a c] = train_vif(a,c,flag,obj)
 
 % Reformat data and subtract contrast
 a = cell2mat(a); tr = m_info.opts.tr; fa = m_info.opts.fa;
-[b t10 r] = deal_cell( get(obj.opts,{'preEnhance','bloodT10','r1Gd'}) );
+[b t10 r] = deal_cell( get(obj.opts,{'bloodT10','r1'}) );
 if obj.opts.t1Correction
     for i = 1:size(a,1)
         a(i,:) = si_ratio2gd(b,a(i,:),fa,tr,t10,r,true);

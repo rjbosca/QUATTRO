@@ -1,37 +1,40 @@
 classdef imgview < handle
 
-    properties (SetObservable=true)
+    properties (SetObservable)
 
-        % Associated qt_image object
+        % Associated QT_IMAGE object
+        %
+        %   "imgObj" is the QT_IMAGE object corresponding to this IMGVIEW object
         imgObj
 
         % Notification display falg
         %
-        %   Logical flag specifying the display of event notifications (true) or
-        %   suppresion (false - default)
+        %   "dispNotify" is a logical flag specifying the display of event
+        %   notifications (TRUE) or suppresion (FALSE - default)
         dispNotify = false;
 
         % Displayed image axes handle
         %
-        %   Handle specifying the axes on which the image object is displayed.
+        %   "hAxes" is the handle specifying the axes on which the QT_IMAGE
+        %   object is displayed. 
         hAxes
 
         % Displayed image handle
         %
-        %   Handle to the current image graphics object
+        %   "hImg" is the handle to the current image graphics object
         hImg
 
         % Real color flag
         %
-        %   Logical flag specifying conversion of indexed images to true color.
-        %   Default: false
+        %   "isRgb" is a logical scalar specifying the conversion of indexed
+        %   images to true color when TRUE. Otherwise (default), the indexed
+        %   image is shown
         isRgb = false;
 
         % Displayed image text handle
         %
-        %   Vector of handles specifying the text objects displayed currently
-        %   displayed. "hFig", "hAxes", and "hText" must be the same length with
-        %   corresponding entries
+        %   "hText" is the handle specifying the on-image text objects displayed
+        %   currently
         hText
 
         % Linked ROI handle(s)
@@ -44,7 +47,7 @@ classdef imgview < handle
         % Flag for displaying on-image text
         %
         %   A logical flag specifying whether to display the on-image text as
-        %   defined by the "dispFields" property. Default: true
+        %   defined by the "dispFields" property. Default: TRUE
         isDispText = true;
 
         % Zoom state of the image
@@ -86,15 +89,7 @@ classdef imgview < handle
 
     end
 
-    properties (Dependent, Hidden=true)
-
-        % Window display bounds
-        %
-        %   A 1-by-2 array defining the minimum and maximum allowable values for
-        %   the display window. For example, when displaying MRI images, values
-        %   will be greater than or equal to zero (unless processing has been
-        %   performed).
-        windowBounds
+    properties (Dependent,Hidden)
 
         % Zoom status
         %
@@ -196,7 +191,7 @@ classdef imgview < handle
 
             % Get the axes/image limits
             axM = [diff( get(obj.hAxes,'XLim') ) diff( get(obj.hAxes,'YLim') )];
-            imM = obj.imgObj.imageSize;
+            imM = obj.imgObj.dimSize;
 
             % Determine the zoom stats
             val = any(axM~=imM(1:2)); %1:2 is needed for RGB images
@@ -275,6 +270,6 @@ classdef imgview < handle
 
         end %delete
 
-    end
+    end %Overloaded methods
 
 end

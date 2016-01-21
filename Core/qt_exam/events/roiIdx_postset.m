@@ -1,11 +1,12 @@
-function roiIdx_postset(src,eventdata)
-%roiIdx_postset  PostSet event for qt_exam "roiIdx" property
+function roiIdx_postset(~,eventdata)
+%roiIdx_postset  Post-set event for QT_EXAM "roiIdx" property
 %
 %   roiIdx_postset(SRC,EVENT) performs operations that modify the ROI display
 %   based on the current state of the qt_exam object
 
-    % Grab the current ROIs using the dependent property "roi" (since will use
-    % the current qt_exam position) and update the state to "on"
+    % Grab the current ROIs using the dependent property "roi" (since this
+    % property will return ROIs at the current QT_EXAM position) and update the
+    % state to "on" 
     roi = eventdata.AffectedObject.roi;
     if any(roi(:).validaterois)
         [roi(:).state] = deal('on');

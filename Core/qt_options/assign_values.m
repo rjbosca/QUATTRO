@@ -13,12 +13,12 @@ switch fld
         set(hObj, 'Value',val);
     otherwise
         switch fld
-            case {'preEnhance','recirc','preSteadyState','nProcessors'}
+            case {'preSteadyState','nProcessors'}
                 strFormat = '%d';
                 val       = round(val);
             case {'t1Min','t1Max','t2Min','t2Max'}
                 strFormat = '%0.0f';
-            case {'bloodT10','tissueT10','r1Gd','r2Gd','r2Threshold'}
+            case {'r2Gd','r2Threshold'}
                 strFormat = '%0.1f';
             case {'loadDir','importDir','saveDir'}
                 strFormat = '%s';

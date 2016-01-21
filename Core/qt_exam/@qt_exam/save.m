@@ -116,6 +116,8 @@ end %qt_exam.save
 
 
 %-------------------------------Data Writing Fcns-------------------------------
+
+%-------------------------------------
 function sv = write_image_data(sv,obj)
 
     % Ensure the proper fields of the save data exist
@@ -139,6 +141,7 @@ function sv = write_image_data(sv,obj)
 
 end %write_image_data
 
+%------------------------------------
 function sv = write_exam_data(sv,obj)
 
     % Ensure the proper fields of the save data exist
@@ -155,6 +158,7 @@ function sv = write_exam_data(sv,obj)
 
 end %write_exam_data
 
+%-----------------------------------
 function sv = write_roi_data(sv,obj)
 
     % Ensure the proper fields of the save data exist
@@ -205,6 +209,7 @@ function sv = write_roi_data(sv,obj)
     
 end %write_roi_data
 
+%-----------------------------------
 function sv = write_map_data(sv,obj)
 
     % Ensure the proper fields of the save data exist
@@ -217,8 +222,8 @@ function sv = write_map_data(sv,obj)
 
     % Grab the map field names for the first slice. Since maps is an array of
     % structures, these field names will be good for all slices
-    mapTags = fieldnames(obj.maps(1));
-    nMapSls = length(obj.maps);
+    mapTags = fieldnames(obj.maps);
+    nMapSls = length(obj.maps.(mapTags{1}));
     nMaps   = numel(mapTags);
 
     % Initialize the ouptut arrays
@@ -229,8 +234,13 @@ function sv = write_map_data(sv,obj)
     for mapIdx = 1:nMaps
     for slIdx  = 1:nMapSls
 
+        %FIXME: this will likely change when the image class is updated
+        if isempty(obj.maps.(mapTags{mapIdx})(slIdx))
+            continue
+        end
+
         [maps{mapIdx,slIdx},mapHdrs{mapIdx,slIdx}] =...
-                                       obj.maps(slIdx).(mapTags{mapIdx}).export;
+                                       obj.maps.(mapTags{mapIdx})(slIdx).export;
 
     end %slice loop
     end %map loop

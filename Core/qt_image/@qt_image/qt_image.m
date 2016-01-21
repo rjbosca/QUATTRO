@@ -1,4 +1,4 @@
-classdef qt_image < handle
+classdef qt_image < generalopts
 %QUATTRO image base class
 %
 %   Type "doc qt_image" for a summary of all properties and methods.
@@ -15,7 +15,6 @@ classdef qt_image < handle
 %       memorySaver     Logical flag for on-the-fly reading of image files
 %       color           Color map string
 %       transparency    Numeric value specifying the image transparency
-%       windowBounds    Minimum and maximum allowable image window display range
 %       wl              Displayed image window level
 %       ww              Displayed image window width
 %       wwwlMode        Window width/level update mode
@@ -64,26 +63,41 @@ classdef qt_image < handle
 
         % 2D or 3D image array.
         %
-        %   Processed image (i.e. scaling, transformations, etc. are applied) to
-        %   this property before returning the array.
+        %   "value" is an array containing the processed 2D image (i.e. scaling,
+        %   transformations, etc. are applied) at the location specified by the
+        %   "index" property. The entire pipeline is evaluated on the array
+        %   before returning the values to the user.
         %
         %   NOTE: for DICOM images, which nominally only support 2D storage, a
         %   volume must be represented by an arry of N image objects, where N is
         %   the number of images in the third dimension.
-        image
-
-    end
-
-    properties (SetObservable = true)
-
-        % Basic image properties
-        %-----------------------
+        value
 
         % Full file name of the image
         %
-        %   This property specifies the full file name from which image data are
-        %   read and the file to which image data are written.
+        %   "fileName" is full file name from which image data are read and the
+        %   file to which image data are written
         fileName = '';
+        %TODO: update this information to refelct the fact that read/write
+        %opeartions will be handled differently (i.e. imageread imagewrite)
+
+        % Image format
+        %
+        %   "format" is a string specifying the image file format (see supported
+        %   formats below) to be used during read/write operations. Many methods
+        %   perform specific operations based on "format". While all attempts
+        %   are made to automatically determine this property, the user is
+        %   ultimately responsible for ensuring that an appropriate value is
+        %   specified.
+        format
+
+        % Flag for reading images on-the-fly
+        %
+        %   "memorySaver" is a logical flag specifying, when TRUE (default),
+        %   that image data stored in a file should be read only when requested.
+        %   When FALSE, the image data read loaded after setting the "fileName"
+        %   property
+        memorySaver = true;
 
         % Image meta data structure
         %
@@ -96,22 +110,12 @@ classdef qt_image < handle
         %   images.
         metaData
 
-        % Image format
-        %
-        %   "format" is a string specifying the image file format (see supported
-        %   formats below) to be used during read/write operations. Many methods
-        %   perform specific operations based on "format". While all attempts
-        %   are made to automatically determine this property, the user is
-        %   ultimately responsible for ensuring that an appropriate value is
-        %   specified. Inappropriate values can result in errors...
-        %
-        %       Supported Types
-        %       ---------------
-        %
-        %      'dicom'
-        %      'metaimage'
-        %      'unknown'
-        format = 'unknown'; %image type used to perform operations
+    end
+
+    properties (SetObservable)
+
+        % Basic image properties
+        %-----------------------
 
         % Image tag
         %
@@ -145,13 +149,6 @@ classdef qt_image < handle
         %   sacrificed with increasing scaling factors. Default: 1.
         scale = 1;
 
-        % Flag for reading images on the fly.
-        %
-        %   A logical flag specifying whether to read images as their data are
-        %   requested by the user (default) or to read all image data into
-        %   memory. If true (default) images, are read on the fly.
-        memorySaver = true;
-
         % Color map to use for display purposes
         %
         %   "color" is the name of an appropriate built-in color map function
@@ -166,25 +163,17 @@ classdef qt_image < handle
         %   transparent
         transparency = 1;
 
-        % Window display bounds
-        %
-        %   A 1-by-2 array defining the minimum and maximum allowable values for
-        %   the display window. For example, when displaying MRI images, values
-        %   should be greater than or equal to zero (unless processing has been
-        %   performed). Default: [-inf inf]
-        windowBounds = [-inf inf];
-
         % Window level
         %
         %   "wl" is a numeric scalar specifying the window level to be used when
         %   displaying the image
-        wl
+        wl = 0;
 
         % Window width
         %
         %   "ww" is a numeric scalar specifying the total window width to be
         %   used when displaying the image
-        ww
+        ww = eps;
 
         % Mode for displaying the image WW/WL
         %
@@ -214,50 +203,61 @@ classdef qt_image < handle
         %   using the specified WW/WL mode.
         wwwlMode = 'internal';
 
-        % GUI mode flag
-        %
-        %   "guiDialogs" is a logical flag that enables (true) or disables
-        %   (false) the use of graphical notifications, such as the image load
-        %   dialog, when using a qt_image object.
-        guiDialogs = true;
-
     end
 
-    properties(Dependent,Hidden=true)
+    properties(Dependent,Hidden)
 
         % Handle(s) of axis used to dislpay the image.
         %
         %   "hAxes" is an array of axis handles that are currently displaying
-        %   the qt_image object's image data
+        %   the QT_IMAGE object's image data
         hAxes
 
         % Image size
         %
-        %   Vector of the size of each dimension of the "image" property
-        imageSize
+        %   "dimSize" is a vector specifying the size of each dimension of the
+        %   "image" property
+        dimSize
 
         % Image ROI values
         %
-        %   Voxel values conatined within linked ROIs, and empty otherwise
+        %   "imageValues" is an array of voxel values conatined within linked
+        %   ROIs
         imageValues
 
         % Zoom state of the image
         %
-        %   A logical scalar specifying the zoom state of the image.
+        %   "isZoomed" is a logical scalar specifying the zoom state of the
+        %   image. When TRUE, the some zoom has been applied to the image.
         isZoomed
+
+
+        %----------------
+        %   Deprecated
+        %----------------
+
+        % Deprecated image property
+        %
+        %   "image" is deprecated. Use "value" instead
+        image
+        
+        % Deprecated image dimension property
+        %
+        %   "imageSize" is deprecated. Use "dimSize" instead
+        imageSize
 
     end
 
-    properties (SetObservable=true,Hidden=true)
+    properties (SetObservable,Hidden)
 
         % Meta-data to display
         %
-        %   A cell array of meta-data fields or image properties (e.g.,
-        %   "imageSize" or "format") to display when images are visualized using
-        %   the "show" method. For each of the m rows, a new line is displayed
-        %   using the data from each of the n meta-data fields specified. For
-        %   each escape character in the "dispFormat" property, a corresponding
-        %   display field must exist, otherwise display errors will occur
+        %   A cell array of meta-data fields or image properties (e.g., "format"
+        %   or "wwMode") to display when images are visualized using the "show"
+        %   method. For each of the m rows, a new line is displayed using the
+        %   data from each of the n meta-data fields specified. For each escape
+        %   character in the "dispFormat" property, a corresponding display
+        %   field must exist, otherwise display errors will occur
         %
         %       Example
         %       -------
@@ -292,27 +292,27 @@ classdef qt_image < handle
 
     end
 
-    properties (Access='private',Hidden=true)
+    properties (Access='private',Hidden,SetObservable)
+
+        % Image object
+        %
+        %   "imgObj" is the image object (e.g., image2d) that contains the image
+        %   data that QT_IMAGE encapsulates
+        imgObj = image2d;
+        %TODO: how to more generally determine what class should be stored in
+        %this object?
 
         % Image view object storage
         %
-        %   Stores an array of image view objects. These objects handle all
-        %   events associated with displaying qt_image data
+        %   "imgViewObj" stores an array of IMGVIEW objects. These objects
+        %   handle all events associated with displaying the QT_IMAGE data
         imgViewObj = imgview.empty(0,0);
 
         % ROI object storage
         %
-        %   Stores an array of qt_roi objects. These objects are shown with the
-        %   images
+        %   "roiObj" stores an array of QT_ROI objects. These objects are shown
+        %   with the images and used to extract voxel values from the image
         roiObj = qt_roi.empty(1,0);
-
-        % Raw image storage
-        %
-        %   Non-dependent storage for the original image data
-        imageRaw
-
-        % Flag for tracking image and meta data edits
-        isEdited = false;
 
     end
 
@@ -321,112 +321,129 @@ classdef qt_image < handle
     methods
 
         function obj = qt_image(varargin)
-        %qt_image  Constructs an instance of a qt_image object
+        %qt_image  Constructs an instance of the qt_image class
+        %
+        %   OBJ = qt_image(FILE) creates a QT_IMAGE object OBJ by reading the
+        %   image data stored in file(s) specifeid by the string FILE. FILE can
+        %   also specify a directory of images, creating an array of QT_IMAGE
+        %   objects OBJ for all valid image files in the directory; any sub-
+        %   directories are ignored. FILE can also be a cell array containing
+        %   any strings for any combination of directories and files.
+        %
+        %   OBJ = qt_image(I) creates a QT_IMAGE object OBJ from the single 2-
+        %   or 3-D numeric array I. Several properties necessary for display
+        %   purposes are automatically set (e.g. WW and WL).
+        %
+        %   OBJ = qt_image(...,'PROP1',VAL1,...) creates OBJ as described above,
+        %   setting the specified property values before performing other
+        %   operations.
         %
         %   OBJ = qt_image creates an empty QUATTRO image object using defaults
         %   were possible. Object properties such as "image", "metaData", etc.
         %   can be set after constructing the object. While the original design
         %   goals of this class were based on the needs of QUATTRO, this class
         %   performs equally as well outside of QUATTRO.
-        %
-        %   OBJ = qt_image(FILE) creates a qt_image object H by reading the
-        %   image data stored in file specifeid by the string FILE. FILE can
-        %   also specify a directory of images, creating an array of qt_image
-        %   objects OBJ by searching for all image files in the directory
-        %   (sub-directories are ignored). FILE can also be a cell array
-        %   containing any strings for any combination of directories and files.
-        %
-        %   OBJ = qt_image(I) creates a qt_image object H from the single 2- or
-        %   3-D numeric array I. Several properties necessary for display
-        %   purposes are automatically set (e.g. WW and WL).
-        %
-        %   OBJ = qt_image(...,'PROP1',VAL1,...) creates OBJ as described above,
-        %   setting the specified property values before performing other
-        %   operations.
 
             % Attach the properties' listeners
             addlistener(obj,'color',     'PostSet',@obj.color_postset);
             addlistener(obj,'dispFields','PostSet',@obj.newdisp);
             addlistener(obj,'dispFormat','PostSet',@obj.newdisp);
-            addlistener(obj,'fileName',  'PostSet',@fileName_postset);
-            addlistener(obj,'metaData',  'PostSet',@metaData_postset);
+            addlistener(obj,'imgObj',    'PostSet',@obj.imgObj_postset);
             addlistener(obj,'wwwlMode',  'PostSet',@obj.wwwlMode_postset);
 
             % Do nothing with zero inputs...this is required by MATLAB for
             % smooth operation
-            if (nargin==0)
+            if ~nargin
                 return
             end
 
             % Parse the inputs
-            [fNames,img,props,vals] = parse_inputs(varargin{:});
+            [imgReq,props,vals] = parse_inputs(varargin{:});
 
-            % Set the image property
-            if ~isempty(img)
-                obj.image       = img;
-                obj.memorySaver = false;
+            % "guiDialogs" must be initialized here...
+            guiDialogsIdx = strcmpi(props,'guiDialogs');
+            if any(guiDialogsIdx)
+                obj.guiDialogs = vals{guiDialogsIdx};
             end
 
-            % File names have been specified (or derived from a directory)
-            % perform the load operation
-            if ~isempty(fNames)
-                % Set filenames for object and initialize the wait bar and
-                % output objects
-                nf        = numel(fNames);
-                hWait     = []; %initialize waitbar variable
-                if obj.guiDialogs && (nf>1)
-                    hWait = waitbar(0,'0% Complete','Name','Loading images...');
-                end
-                obj       = qt_image.empty(nf,0); %initialize PostSet will fire
-                for fIdx = 1:nf
+            %--------------------------------
+            % Deal image data or file name(s)
+            %--------------------------------
 
-                    % Waitbar functionality
-                    if ~isempty(hWait) && ishandle(hWait)
-                        pct = fIdx/nf;
-                        waitbar(pct,hWait,sprintf('%d%% Complete',round(pct*100)));
-                    elseif ~isempty(hWait) && ~ishandle(hWait) %user cancelled
-                        obj = qt_image.empty(1,0);
-                        break
-                    end
+            % Construct the necessary image objects
+            if ~iscell(imgReq)
+                imgReq = {imgReq};
+            end
 
-                    % Assign file name (fires header reading utility)
-                    obj(fIdx).fileName = fNames{fIdx};
-                end
+            % Set filenames for object and initialize the wait bar and output
+            % objects
+            nf        = numel(imgReq);
+            hWait     = []; %initialize waitbar variable
+            if obj.guiDialogs && (nf>1)
+                hWait = waitbar(0,'0% Complete','Name','Loading images...');
+            end
+            obj       = qt_image.empty(nf,0); %initialize PostSet will fire
+            nInvalid  = 0;
+            for inIdx = 1:nf
 
-                % Delete the waitbar if it still exists
-                if ishandle(hWait)
-                    delete(hWait);
+                % Waitbar functionality
+                if ~isempty(hWait) && ishandle(hWait)
+                    pct = inIdx/nf;
+                    waitbar(pct,hWait,sprintf('%d%% Complete',round(pct*100)));
+                elseif ~isempty(hWait) && ~ishandle(hWait) %user cancelled
+                    obj.delete;
+                    break
                 end
 
-                % Some PostSet events attempt to read files that appear to be
-                % images. In some cases, these files (e.g., OSIRIX DICOMs) can
-                % contain no actual image data and are deleted during the
-                % attempted initialization and must be removed before returning
-                % the array of objects
-                obj( ~obj.isvalid ) = [];
-
-                % Remove unsupported image files
-                supportFrmt = {'dicom','jpg','tif'};
-                isSupported = cellfun(@(x) any(strcmpi(x,supportFrmt)),...
-                                                                  {obj.format});
-                obj(~isSupported) = [];
+                % Construct an image object and assign it if valid
+                %TODO: how to handle images of other dimensions
+                imObj = image2d(imgReq{inIdx});
+                nInvalid = nInvalid + ~imObj.isvalid;
+                if imObj.isvalid
+                    obj(inIdx-nInvalid).imgObj = imObj;
+                end
 
             end
 
-            % Deal user-specified properties (i.e., optional inputs) qt_image
+            % Delete the waitbar if it still exists
+            if ishandle(hWait)
+                delete(hWait);
+            end
+
+            % Some post-set events attempt to read files that appear to be
+            % images. In some cases, these files (e.g., OSIRIX DICOMs) contain
+            % no actual image data and are deleted during the attempted
+            % initialization and must be removed before returning the array of
+            % objects
+            obj(~obj.isvalid) = [];
+
+
+            %----------------------
+            % Deal other properties
+            %----------------------
+
+            % Deal user-specified properties (i.e., optional inputs)
             if ~isempty(obj) && all(obj.isvalid)
                 for idx = 1:length(props)
                     [obj(:).(props{idx})] = deal(vals{idx});
                 end
             end
 
-        end
+        end %qt_image.qt_image
 
-    end
+    end %class constructor
 
 
     %------------------------------- Get Methods -------------------------------
     methods
+
+        function val = get.fileName(obj)
+            val = obj.imgObj.fileName;
+        end %qt_image.get.fileName
+
+        function val = get.format(obj)
+            val = obj.imgObj.format;
+        end %qt_image.get.format
 
         function val = get.hAxes(obj)
         %hAxes  Array of axes used to display image data
@@ -439,26 +456,35 @@ classdef qt_image < handle
         end %qt_image.get.hAxes
 
         function val = get.image(obj)
+            %TODO: remove 1/1/2016
+            warning('qt_image:imagePropDeprecated',...
+                    ['The "image" property is deprecated and will be removed ',...
+                     'in a future release. Use "value" instead']);
+            val = obj.value;
+        end %qt_image.get.image
+
+        function val = get.imageSize(obj)
+            %TODO: remove 1/1/2016
+            warning('qt_image:imagePropDeprecated',...
+                    ['The "imageSize" property is deprecated and will be ',...
+                     'removed in a future release. Use "dimSize" instead']);
+                 val = obj.dimSize;
+        end %qt_image.get.imageSize
+
+        function val = get.value(obj)
         %image  Image property of qt_image object
         %
-        %   im = obj.image returns the image property of the qt_image object
+        %   im = obj.value returns the image property of the qt_image object
         %   obj. If memorySaver is enabled, the image is first read and is
         %   then passed as output, but not stored
 
-            % Determine where the data is stored
-            if isempty(obj.imageRaw) && obj.memorySaver %read on-the-fly
-                [tf,val] = obj.read;
-                if ~obj.memorySaver && tf %store the image
-                    obj.imageRaw = val;
-                end
-            else %data already in memory
-                val = obj.imageRaw;
-            end
+            % Initialize some aliases
+            val = obj.imgObj.value;
+            m   = obj.imgObj.dimSize;
 
             % Process the image
-            m = size(val);
             n = numel(m);
-            if obj.scale~=1
+            if (obj.scale~=1)
                 % Get the ndgrid vectors
                 [xc,xcs] = deal( cell(1,n) );
                 for dimIdx = 1:n
@@ -482,29 +508,27 @@ classdef qt_image < handle
             end
 
             % Checks image bounds
-            val = enforce_im_bounds(val,obj.windowBounds);
+%             val = enforce_im_bounds(val,obj.windowBounds);
 
-        end %get.image
+        end %qt_image.get.value
 
-        function val = get.imageSize(obj)
-        %imageSize  Size of image
+        function val = get.dimSize(obj)
+        %dimSize  Size of image
         %
-        %   m = obj.imageSize returns a row vector containing the number of
-        %   voxels for each dimension of the image data stored in the
-        %   qt_image object.
-
-            val = size(obj.image);
-            
-        end %get.imageSize
+        %   M = OBJ.dimSize returns a row vector containing the number of voxels
+        %   M for each dimension of the image data stored in the qt_image object
+        %   OBJ.
+            val = obj.imgObj.dimSize;
+        end %qt_image.get.dimSize
 
         function val = get.imageValues(obj)
 
             val = [];
             if ~isempty(obj.roiObj)
-                val = obj.roiObj.mask(obj.image);
+                val = obj.roiObj.mask(obj.value);
             end
 
-        end %get.imageValues
+        end %qt_image.get.imageValues
 
         function val = get.isZoomed(obj)
             val = false; %initialize
@@ -513,7 +537,15 @@ classdef qt_image < handle
             if ~isempty(viewObj)
                 val = viewObj.isZoomed;
             end
-        end %get.isZoomed
+        end %qt_image.get.isZoomed
+
+        function val = get.memorySaver(obj)
+            val = obj.imgObj.memorySaver;
+        end %qt_image.get.memorySaver
+
+        function val = get.metaData(obj)
+            val = obj.imgObj.metaData;
+        end %qt_image.get.metaData
 
         function val = get.roiObj(obj)
             % Get the only the valid qt_roi objects and update the "roiObj"
@@ -521,7 +553,7 @@ classdef qt_image < handle
             val = obj.roiObj;
             val        = val(val.validaterois);
             obj.roiObj = val;
-        end %get.roiObj
+        end %qt_image.get.roiObj
 
     end
 
@@ -533,24 +565,24 @@ classdef qt_image < handle
 
             % Validate the input using validatestring to partial match
             try
-                val = validatestring(val,{'hsv','hot','cool','bone','jet',...
-                                              'copper','pink','prism','prism'});
+                obj.color = validatestring(val,{'bone','copper','cool',...
+                                                'gray','hsv','hot','jet',...
+                                                'pink','prism','prism'});
             catch ME
                 if strcmpi(ME.identifier,'MATLAB:unrecognizedStringChoice')
                     rethrow(ME)
                 elseif ~ischar(val)
-                    warning('qt_image:wwwlMode:nonChar',...
-                            ['Non-character value detected.\n',...
-                             'No changes were made to the property "color".']);
+                    warning([mfilename ':wwwlMode:nonChar'],...
+                            ['Non-character value detected. No changes were ',...
+                             'made to the property "color".']);
                 elseif ~any( strcmpi(val,{'internal','axis',}) )
-                    warning('qt_image:wwwlMode:invalidMode',...
-                            ['''%s'' does not match any valid WW/WL mode.\n',...
-                             'No changes were made to the property "color".']);
+                    warning([mfilename ':wwwlMode:invalidMode'],...
+                            ['''%s'' does not match any valid WW/WL mode. ',...
+                             'No changes were made to the property "color".'],...
+                             val);
                 end
             end
 
-            % Update the value
-            obj.color = val;
         end
 
         function set.dispFields(obj,val)
@@ -564,15 +596,15 @@ classdef qt_image < handle
             % Store input and notify of change
             obj.dispFields = val;
                     
-        end %set.dispFields
+        end %qt_image.set.dispFields
 
         function set.dispFormat(obj,val)
 
             if (~ischar(val) && ~iscell(val)) ||...
                                      (iscell(val) && any(~cellfun(@ischar,val)))
-                warning('qt_image:dispFormat:invalidValue','%s\n%s',...
-                        'Non-character value detected.',...
-                        'No changes were made to the property ''dispFormat''.');
+                warning([mfilename ':dispFormat:invalidValue'],...
+                        ['Non-character value detected. No changes were ',...
+                         'made to the property ''dispFormat''.']);
             else
 
                 % Store the fields. Note that validation is performed in the
@@ -586,39 +618,22 @@ classdef qt_image < handle
                 obj.dispFormat = val;
             end
 
-        end %set.dispFormat
+        end %qt_image.set.dispFormat
 
-        function set.image(obj,val)
-        %set.image  Sets the qt_image "image" property
-        %
-        %   OBJ.image = IM sets the "image" property of the qt_image object OBJ
-        %   to the value of IM. This operation automatically calculates other
-        %   properties such as the "wl", "ww", "windowBounds". When storing
-        %   image data in this manner, the memory saver flag is automatically
-        %   disabled.
+        function set.fileName(obj,val)
+            obj.imgObj.fileName = val;
+        end %qt_image.set.fileName
 
-            % "image" is a dependent property, instead store the data in
-            % "imageRaw" for later calls.
-            obj.imageRaw = val;
-
-            % Certain properties should be initialized when setting the "image"
-            % property; other methods/properties depend on these data
-            obj.windowBounds = [min( val( ~isnan(val(:)) & ~isinf(val(:))) ),...
-                                max( val( ~isnan(val(:)) & ~isinf(val(:))) )];
-            obj.wl           = abs( diff(obj.windowBounds)/2 );
-            obj.ww           = 2*obj.wl;
-
-            % Disable the memory saver flag
-            obj.memorySaver = false;
-
-        end %set.image
+        function set.format(obj,val)
+            obj.imgObj.format = val;
+        end %qt_image.set.format
 
         function set.imgViewObj(obj,val)
 
             % Validate the input
             if ~strcmpi( class(val), 'imgview' )
-                warning('qt_image:imgViewObj:invalidObject',...
-                        'Input was of class "%s", expected "imgview".\n',...
+                warning([mfilename ':imgViewObj:invalidObject'],...
+                        'Input was of class "%s", expected "imgview".',...
                         class(val));
                 return
             end
@@ -646,7 +661,15 @@ classdef qt_image < handle
             % Add the object to the stack
             obj.imgViewObj = [stack(:);val(:)];
 
-        end %set.imgViewObj
+        end %qt_image.set.imgViewObj
+
+        function set.memorySaver(obj,val)
+            obj.imgObj.memorySaver = val;
+        end %qt_image.set.memorySaver
+
+        function set.metaData(obj,val)
+            obj.imgObj.metaData = val;
+        end
 
         function set.units(obj,val)
 
@@ -667,17 +690,17 @@ classdef qt_image < handle
                     if ~strcmpi(ME.message(1:15),'Unit known as "')
                         rethrow(ME);
                     end
-                    warning('qt_image:units:invalidUnit',...
-                           ['"%s" is an invalid unit string. No changes\n',...
-                            'were made to the property "unit".\n'],val);
+                    warning([mfilename ':units:invalidUnit'],...
+                            ['"%s" is an invalid unit string. No changes ',...
+                             'were made to the property "unit".'],val);
                 end
             else
-                warning('qt_image:units:nonCharValue',...
-                       ['The qt_image property "units" only accepts\n',...
-                        'character inputs. No change was applied.\n']);
+                warning([mfilename ':units:nonCharValue'],...
+                        ['The qt_image property "units" only accepts ',...
+                         'character inputs. No change was applied.']);
             end
                 
-        end %set.units
+        end %qt_image.set.units
 
         function set.wl(obj,val)
 
@@ -688,18 +711,18 @@ classdef qt_image < handle
 
             % Validate/store input
             if (numel(val)>1)
-                warning('qt_image:wl:nonScalarValue','%s\n%s',...
-                        'Non-scalar value detected.',...
-                        'No changes were made to the property ''wl''.');
+                warning([mfilename ':wl:nonScalarValue'],...
+                        ['Non-scalar value detected. No changes were made ',...
+                         'to the property ''wl''.']);
             elseif isempty(val) || ~isnumeric(val) || isnan(val) || isinf(val)
-                warning('qt_image:wl:invalidValue','%s\n%s',...
-                        'Non-numeric, NaN, or infinite value detected.',...
-                        'No changes were made to the property ''wl''.');
+                warning([mfilename ':wl:invalidValue'],...
+                        ['Non-numeric, NaN, or infinite value detected. ',...
+                         'No changes were made to the property ''wl''.']);
             else
                 obj.wl = double(val);
             end
             
-        end %set.wl
+        end %qt_image.set.wl
 
         function set.ww(obj,val)
 
@@ -710,18 +733,18 @@ classdef qt_image < handle
 
             % Validate/store input
             if (numel(val)>1)
-                warning('qt_image:ww:nonScalarValue','%s\n%s',...
-                        'Non-scalar value detected.',...
-                        'No changes were made to the property ''ww''.');
+                warning([mfilename ':ww:nonScalarValue'],...
+                        ['Non-scalar value detected. No changes were made ',...
+                         'to the property ''ww''.']);
             elseif ~isnumeric(val) || isnan(val) || isinf(val) || (val<0)
-                warning('qt_image:ww:invalidValue','%s\n%s',...
-                        'Non-numeric, NaN, or infinite value detected.',...
-                        'No changers were made to the property ''ww''.');
+                warning([mfilename ':ww:invalidValue'],...
+                        ['Non-numeric, NaN, or infinite value detected. ',...
+                         'No changers were made to the property ''ww''.']);
             else
                 obj.ww = double(val);
             end
             
-        end %set.ww
+        end %qt_image.set.ww
 
         function set.wwwlMode(obj,val)
 
@@ -732,45 +755,45 @@ classdef qt_image < handle
                 if strcmpi(ME.identifier,'MATLAB:unrecognizedStringChoice')
                     rethrow(ME)
                 elseif ~ischar(val)
-                    warning('qt_image:wwwlMode:nonChar','%s\n%s',...
-                            'Non-character value detected.',...
-                            'No changes were made to the property ''wwwlMode''.');
+                    warning([mfilename ':wwwlMode:nonChar'],...
+                            ['Non-character value detected. No changes ',...
+                             'were made to the property ''wwwlMode''.']);
                 elseif ~any( strcmpi(val,{'internal','axis',}) )
-                    warning('qt_image:wwwlMode:invalidMode','''%s'' %s\n%s',...
-                            val,'does not match any valid WW/WL mode.',...
-                            'No changes were made to the property ''wwwlMode''.');
+                    warning([mfilename ':wwwlMode:invalidMode'],...
+                            ['''%s'' does not match any valid WW/WL mode. ',...
+                             'No changes were made to the property ',...
+                             '''wwwlMode''.'],val);
                 end
             end
 
             % Update the value
             obj.wwwlMode = val;
 
-        end %set.wwwlMode
+        end %qt_image.set.wwwlMode
 
     end
 
 
     %------------------------------ Other Methods ------------------------------
-    methods (Hidden=true)
+    methods (Hidden)
 
-        function deconstruct(obj,src,eventdata)
-        %deconstruct  Dissociates imgview object data from an axis
+        function deconstruct(obj,src,~)
+        %deconstruct  Dissociates IMGVIEW object data from an axis
         %
         %   deconstruct(OBJ,SRC,EVENT) removes all image data links by deleting
         %   the imgview object that notified the "deconstructView" event (i.e.
-        %   SRC). This event also clears the temporary storage of the qt_image
-        %   object OBJ, such as the raw image cache.
+        %   SRC). This event also notifies the imagebase (or sub-class) object
+        %   that image caches should be flushed. EVENT is unused but required
+        %   for MATLAB event syntax
 
-            % Delete the imgview (includes the text and image) object that fired
+            % Delete the IMGVIEW (includes the text and image) object that fired
             % this event. This must be done first to ensure that the following
-            % checks can determine how many imgview objects remain for the
-            % current qt_image object.
+            % checks can determine how many IMGVIEW objects remain for the
+            % current QT_IMAGE object.
             src.delete;
 
             % Destroy raw image data if memory saver is on
-            if obj.memorySaver && isempty(obj.imgViewObj)
-                obj.imageRaw = [];
-            end
+            notify(obj.imgObj,'flushCache');
 
             % Remove any ROIs
             %TODO: change this to "isempty" when the qt_roi method "isempty" is
@@ -784,16 +807,16 @@ classdef qt_image < handle
         function delete(obj)
 
             % Before deconstructing the image objects, delete any existing
-            % displayed images in the imgview objects. Normally, the imgview
+            % displayed images in the imgview objects. Normally, the IMGVIEW
             % objects would delete these images during a call to the destructor,
             % but as a convenience to ensure that the axis doesn't "flicker"
-            % when changing image displays only destruction of the qt_image
+            % when changing image displays only destruction of the QT_IMAGE
             % object will delete these data. This is accomplished by updating
             % the existing CData of associated images when a new axis is set in
-            % the qt_image object's properties instead of calling imshow every
+            % the QT_IMAGE object's properties instead of calling imshow every
             % time an image is displayed
             hIm     = [];
-            if obj.isvalid && ~isempty(obj.imgViewObj) && obj.imgViewObj.isvalid
+            if ~isempty(obj.imgViewObj) && any(obj.imgViewObj.isvalid)
                 hIm = [obj.imgViewObj.hImg];
                 obj.imgViewObj.delete;
             end
@@ -833,6 +856,18 @@ classdef qt_image < handle
             end
 
         end %qt_image.remove_view
+
+    end
+
+
+    %------------------------------ Static Methods -----------------------------
+    methods (Static)
+
+        % Creates a constant image
+        %
+        %   Type "help qt_image.makeconstant" for more information
+        obj = makeconstant(m,a);
+
     end
 
 end %qt_image
@@ -841,50 +876,83 @@ end %qt_image
 %------------------------------------------
 function varargout = parse_inputs(varargin)
 
-    % Parse the first input; this is most easily handled separately from the
-    % options. Determine if the user is using the file or image input syntax.
-    % For the former, validate all file/directory names.
-    if ischar(varargin{1}) %convert single file/dirs names to cell for use below
-        varargin{1} = varargin(1);
-    end
-    if iscell(varargin{1})
-        cellfun(@validate_files,varargin{1});
-        varargout{1} = parse_filenames(varargin{1});
-    elseif isnumeric(varargin{1}) && (ndims(varargin{1})<4) &&...
-                           (ndims(varargin{1})==2 && all( size(varargin{1})>1 ))
-        varargout{2} = varargin{1};
-    else
-        error('qt_image:parse_inputs:invalidImageOrFileName',...
-             ['The first qt_image input must be a valid file/directory\n',...
-              'name (or cell containing such names) or an image.']);
-    end
-    varargin(1) = []; %remove the 1st input; only options need parsing now
-
     % Construct the parser
     parser = inputParser;
 
+    % Parse the first input; this is most easily handled separately from any
+    % additional user-specified options. Determine if the user is using the file
+    % or image input syntax. For the former, validate all file/directory names.
+    if isnumeric(varargin{1}) %image specified
+        parser.addRequired('imageInput');
+    elseif (ischar(varargin{1}) && exist(varargin{1},'file')) ||...
+                                                             iscell(varargin{1})
+
+        % Determine which of the inputs are directories and parse the file names
+        if ~iscell(varargin{1})
+            varargin{1} = varargin(1);
+        end
+        isDir = cellfun(@(x) (exist(x,'dir')==7),varargin{1});
+        if any(isDir)
+            % Parse the file names for the specified directories
+            fNames = parse_filenames(varargin{1}(isDir));
+
+            % Update the input cell array to reflect the new file names
+            varargin{1} = [varargin{1}(~isDir) fNames(:)];
+        end
+
+        parser.addRequired('imageInput');
+        if iscell(varargin{1}) %cell array of string specified
+            cellfun(@validate_files,varargin{1});
+        end
+    else
+        error('qt_image:parse_inputs:invalidImageOrFileName',...
+             ['The first QT_IMAGE input must be a valid file/directory ',...
+              'name (or cell containing such names) or an image.']);
+    end
+
     % Validate each of the user-specified options and add the param/value parser
-    % components to the input parser
+    % components to the input parser. In lieu of using the defined defaults,
+    % simply use an empty array as properties that are not specified will need
+    % to be removed from the inputs; there is no need to set those properties
+    % that have defaults defined by the class
     if (nargin>1)
-        obj = qt_image; %needed for defining defaults and property names
-        varargin(1:2:end) = cellfun(@(x) validatestring(x,properties(obj)),...
-                                       varargin(1:2:end),'UniformOutput',false);
-        cellfun(@(x) parser.addParamValue(x,obj.(x)),varargin(1:2:end));
+        qtProps = sort( properties(mfilename) ); %sort for easy remove of field 
+                                                 %from "results" below
+        cellfun(@(x) parser.addParamValue(x,[]),qtProps);
     end
 
     % Parse the inputs
     parser.parse(varargin{:});
+    results = parser.Results;
 
-    % Deal the outputs
-    varargout(3:4) = {fieldnames(parser.Results),struct2cell(parser.Results)};
+    % Handle the image class inputs here. Because qt_image wraps a number of
+    % properties (using dependent properties) those properties that should be
+    % passed to the image object constructor need to be parsed here
+    varargout{1} = results.imageInput;
+    results      = rmfield(results,'imageInput');
+
+    % Remove parsed values that were not specified by the user, but were defined
+    % by the parser defaults
+    isRemove = cellfun(@isempty,struct2cell(results));
+    %TODO: this if exists statement is a temporary patch. If only a single file
+    %name is specified, then nargin will be 1 (meaning qtProps doesn't get
+    %defined). Write better code...
+    if exist('qtProps','var')
+        results  = rmfield(results,qtProps(isRemove));
+    end
+
+    % Store the remaining outputs
+    varargout(2:3) = {fieldnames(results),struct2cell(results)};
 
 end
-
 
 %---------------------------------------
 function fList = parse_filenames(fNames)
 
     % Determine which of the file/directory name inputs is a file/directory name
+    if ~iscell(fNames)
+        fNames = {fNames};
+    end
     isFile = cellfun(@(x) (exist(x,'file')==2),fNames);
 
     % At this point, each of the file names has already been validated. Remove
@@ -901,18 +969,18 @@ function fList = parse_filenames(fNames)
 
 end %parse_filenames
 
-
 %--------------------------------
 function fList = dir2files(dirIn)
 
     % Grab the directory constiuents, removing the usual suspects ("." and "..")
     % and directories
-    fList = parse_dir_files(dirIn);
+    fList = gendirfiles(dirIn);
 
     % The directory should contain files. Otherwise inform the user
     if isempty(fList)
-        warning('qt_image:emptyDirectory',['"%s" contained no files.\n',...
-                'Skipping this directories contents during import.\n'],dirIn);
+        warning([mfilename ':emptyDirectory'],...
+                ['"%s" contained no files. This directory''s contents ',...
+                 'will be omitted from the import operation.'],dirIn);
     end
 
 end %dir2files
@@ -922,11 +990,11 @@ function validate_files(fName)
 
     if ~ischar(fName)
         error('qt_image:invalidFileInput',...
-             ['The first qt_image input must be a file/directory name\n',...
+             ['The first qt_image input must be a file/directory name ',...
               '(or cell containing such names) or an image.']);
     elseif all(exist(fName,'file')~=[2 7])
         error('qt_image:invalidFileOrDir',...
-              '"%s" is not a valid file or directory.\n',fName);
+              '"%s" is not a valid file or directory. ',fName);
     end
 
 end %validate_files

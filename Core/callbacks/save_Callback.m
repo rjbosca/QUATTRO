@@ -1,4 +1,4 @@
-function save_Callback(hObj,eventdata)
+function save_Callback(hObj,~)
 %save_Callback  Callback for handling QUATTRO save requests
 %
 %   save_Callback(H,EVENT)

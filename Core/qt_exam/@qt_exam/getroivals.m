@@ -1,11 +1,13 @@
-function y = getroivals(obj,varargin)
+function [y,roiMask] = getroivals(obj,varargin)
 %getroivals  Returns pixel values in an ROI
 %
-%   A = getroivals(OBJ) gets all pixels of the currently selected ROI from the
-%   qt_exam object OBJ. Same as getroivals(OBJ,'roi')
+%   [A,M] = getroivals(OBJ) gets all pixels of the currently selected ROI as the
+%   numeric vector A from the QT_EXAM object OBJ. An optional output of the bit
+%   mask (M) used to derive the voxels values can be requested. This syntax is
+%   the same as getroivals(OBJ,'roi')
 %
-%   A = getroivals(OBJ,TYPE) gets ROI valus using one of the following methods
-%   specified by the string TYPE:
+%   [...] = getroivals(OBJ,TYPE) gets ROI valus using one of the following
+%   methods specified by the string TYPE:
 %
 %       Type            Description
 %       ----------------------------
@@ -40,21 +42,21 @@ function y = getroivals(obj,varargin)
 %                       array. IMPORTANT: this requires that the ROI selection
 %                       exist at each series location
 %
-%   A = getroivals(...,FCN) calculates the ROI values as specified above,
+%   [...] = getroivals(...,FCN) calculates the ROI values as specified above,
 %   performing the operations specified by the function handle (or cell array of
 %   function handles) FCN. If FCN is a cell, A will be an n-by-1 cell array.
 %
-%   A = getroivals(...FCN,RMNAN) removes NaN values from the ROI voxels used in
-%   all computations if the RMNAN flag is true. An empty array (i.e. []) can
+%   [...] = getroivals(...FCN,RMNAN) removes NaN values from the ROI voxels used
+%   in all computations if the RMNAN flag is true. An empty array (i.e. []) can
 %   be used for FCN if no computation is desired. RMNAN is ignored when using
 %   the 'pixel' option
 %
-%   A = getroivals(...,FCN,RMNAN,'PROP1',VAL1,...) calculates the ROI values
-%   according to the method and user defined operations, using the ROI specified
-%   by the location properties and the associated index. 'PROP' is one of
-%   'slice', 'series', 'roi', or 'tag'
+%   [..] = getroivals(...,'PROP1',VAL1,...) calculates the ROI values according
+%   to the method and user defined operations, using the ROI specified by the
+%   location properties and the associated index. 'PROP' is one of 'slice',
+%   'series', 'roi', or 'tag'
 
-    % Validate the number of inputs and the qt_exam object size
+    % Validate the number of inputs and the QT_EXAM object size
     narginchk(1,13);
     if (numel(obj)>1)
         error(['qt_exam:' mfilename ':tooManyObjects'],...
@@ -68,9 +70,13 @@ function y = getroivals(obj,varargin)
     % Initialize output. An empty cell is stored to ensure that the cellfun
     % calls below work without having to check for an empty data set
     y = {};
+    roiMask = false(obj.image.dimSize);
+    if ~isfield(obj.rois,tag)
+        return
+    end
 
     % Get some necessary info
-    mIm  = obj.image.imageSize;
+    mIm  = obj.image.dimSize;
     nIms = size(obj.imgs,2);
     mRoi = size(obj.rois.(tag));
     if (numel(mRoi)<3)
@@ -106,6 +112,11 @@ function y = getroivals(obj,varargin)
             %TODO: determine how to switch between quantifying maps/images
             if (numel(roi)==1) && ~isempty(roi.imgVals)
                 y = {roi.imgVals};
+
+                % When requested, also supply the mask
+                if (nargout>1)
+                    roiMask = roi.mask;
+                end
             else
                 
             end
@@ -133,22 +144,20 @@ function y = getroivals(obj,varargin)
             % every point in the series
             roiMask = roi.mask;
 
-            y = arrayfun(@(x) x.image(roiMask),obj.imgs(inds{2},:),...
+            y = arrayfun(@(x) x.value(roiMask),obj.imgs(inds{2},:),...
                                                          'UniformOutput',false);
         case 'pixel'
 
             % Get the data cursor's position
-            hData = datacursormode(obj.hFig);
-            pos   = hData.getCursorInfo;
+            pos   = obj.voxelIdx;
             if isempty(pos)
                 return
             end
-            pos   = pos.Position;
             pos   = pos/obj.image.scale;
     
             % Generate multi-parameter data by looping through each serial image
             % and extracting the voxel values at the specified location
-            y     = {arrayfun(@(x) x.image(pos(2),pos(1)),obj.imgs(inds{2},:))};
+            y     = {arrayfun(@(x) x.value(pos(2),pos(1)),obj.imgs(inds{2},:))};
 
         case 'label'
 
@@ -161,7 +170,7 @@ function y = getroivals(obj,varargin)
             y = cell(1,nIms);
             for seIdx = 1:nIms
                 roiMask  = obj.rois.(tag)(inds{1},inds{2},seIdx).mask;
-                y{seIdx} = obj.imgs(inds{2},seIdx).image(roiMask);
+                y{seIdx} = obj.imgs(inds{2},seIdx).value(roiMask);
             end
     end
 
@@ -206,7 +215,11 @@ function y = getroivals(obj,varargin)
 
         % Now that the value of the 'tag' option is known (the default ROI index
         % depends on this), add the new input param/value pair and parse again
-        parser.addParamValue('roi',     obj.roiIdx.(parser.Results.tag));
+        dfltTag = 'roi';
+        if isfield(obj.roiIdx,parser.Results.tag)
+            dfltTag = obj.roiIdx.(parser.Results.tag);
+        end
+        parser.addParamValue('roi',dfltTag);
         parser.parse(varargin{:});
 
         % Grab the parser results so data formats can be modified if necessary
@@ -232,7 +245,7 @@ function y = getroivals(obj,varargin)
 
 end %getroivals
 
-
+%-------------------------
 function tf = checkFcns(f)
 
     tf = isempty(f);

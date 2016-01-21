@@ -10,7 +10,11 @@ function gui_menus(hQt)
                                             'Invalid handle to QUATTRO figure');
     end
 
+
+    %----------
     % File menu
+    %----------
+
     hF  = uimenu('Parent',hQt,...
                  'Label','File',...
                  'Tag','menu_file');
@@ -125,7 +129,11 @@ function gui_menus(hQt)
                  'Label','Pinnacle',...
                  'Tag','menu_export_rois_pinnacle');
 
+
+    %----------
     % Exam menu
+    %----------
+
     hF  = uimenu('Parent',hQt,...
                  'Enable','off',...
                  'Label','Exam',...
@@ -133,52 +141,7 @@ function gui_menus(hQt)
     hS  = uimenu('Parent',hF,...
                  'Enable','off',...
                  'Label','Exam Type',...
-                 'Tag','menu_type');
-          uimenu('Parent',hS,...
-                 'Callback',@change_exam_type_Callback,...
-                 'Checked','on',...
-                 'Label','Generic',...
-                 'Tag','menu_generic');
-          uimenu('Parent',hS,...
-                 'Callback',@change_exam_type_Callback,...
-                 'Label','DCE',...
-                 'Tag','menu_dce');
-          uimenu('Parent',hS,...
-                 'Callback',@change_exam_type_Callback,...
-                 'Label','DSC',...
-                 'Tag','menu_dsc');
-          uimenu('Parent',hS,...
-                 'Callback',@change_exam_type_Callback,...
-                 'Label','eDWI',...
-                 'Tag','menu_edwi');
-          uimenu('Parent',hS,...
-                 'Callback',@change_exam_type_Callback,...
-                 'Label','DWI',...
-                 'Tag','menu_dwi');
-          uimenu('Parent',hS,...
-                 'Callback',@change_exam_type_Callback,...
-                 'Label','DTI',...
-                 'Tag','menu_dti');
-          uimenu('Parent',hS,...
-                 'Callback',@change_exam_type_Callback,...
-                 'Label','Multi-Flip Angle',...
-                 'Tag','menu_multiflip');
-          uimenu('Parent',hS,...
-                 'Callback',@change_exam_type_Callback,...
-                 'Label','Saturation Recovery',...
-                 'Tag','menu_multitr');
-          uimenu('Parent',hS,...
-                 'Callback',@change_exam_type_Callback,...
-                 'Label','Multi-Inversion Time',...
-                 'Tag','menu_multiti');
-          uimenu('Parent',hS,...
-                 'Callback',@change_exam_type_Callback,...
-                 'Label','Multi-Echo Time',...
-                 'Tag','menu_multite');
-          uimenu('Parent',hS,...
-                 'Callback',@change_exam_type_Callback,...
-                 'Label','Surgery Planning',...
-                 'Tag','menu_surgery');
+                 'Tag','menu_exam_type');
           uimenu('Parent',hF,...
                  'Callback',@add_exam_Callback,...
                  'Label','Add',...
@@ -193,7 +156,19 @@ function gui_menus(hQt)
                  'Label','Rename',...
                  'Tag','menu_rename_exam');
 
+    %FIXME: I need a better solution for updating the exam sub-type menus. When
+    %QUATTRO is compiled, the sub-menu functions, such as MODEL_INFO, that are
+    %called from each of the associated packages are not added to the
+    %compilation correctly because they are not called explicitly
+    if ~isdeployed
+        update_menu_exam_type(hS); %update the sub-menus
+    end
+
+
+    %-----------
     % Image menu
+    %-----------
+
     hF  = uimenu('Parent',hQt,...
                  'Enable','off',...
                  'Label','Image',...
@@ -238,6 +213,12 @@ function gui_menus(hQt)
                  'Callback',@histogram_Callback,...
                  'Label','Histogram',...
                  'Tag','menu_histogram');
+
+
+    %--------------
+    % Analysis menu
+    %--------------
+
     hF  = uimenu('Parent',hQt,...
                  'Enable','off',...
                  'Label','Analysis',...
@@ -248,7 +229,8 @@ function gui_menus(hQt)
                  'Tag','menu_map_options');
           uimenu('Parent',hF,...
                  'Callback',@options_Callback,...
-                 'Tag','menu_exam_options');
+                 'Label','Modeling Options',...
+                 'Tag','menu_modeling_options');
           uimenu('Parent',hF,...
                  'Callback',@modeling_Callback,...
                  'Label','Modeling',...
@@ -292,6 +274,12 @@ function gui_menus(hQt)
                  'Callback',@change_snr_calc_Callback,...
                  'Label','Noise ROI',...
                  'Tag','menu_noise_roi_snr');
+
+
+    %-------------
+    % Reports menu
+    %-------------
+
     hF  = uimenu('Parent',hQt,...
                  'Enable','off',...
                  'Label','Reports',...
@@ -320,6 +308,8 @@ function gui_menus(hQt)
                  'Callback',@get_windows_Callback,...
                  'Label','Window',...
                  'Tag','menu_window');
+
+    % Script menu
     hF  = uimenu('Parent',hQt,...
                  'Label','Scripts',....
                  'Tag','menu_scripts');
@@ -339,6 +329,8 @@ function gui_menus(hQt)
                  'Callback',@import_script_Callback,...
                  'Label','Import',...
                  'Tag','import_script');
+
+    % Help menu
     hF  = uimenu('Parent',hQt,...
                  'Label','Help',...
                  'Tag','menu_help');
@@ -348,7 +340,13 @@ function gui_menus(hQt)
                  'Tag','menu_about');
 
     % Update some menus
-    update_menu_scripts(hQt);
+    %FIXME: I need a better solution for updating the exam sub-type menus. When
+    %QUATTRO is compiled, the sub-menu functions, such as MODEL_INFO, that are
+    %called from each of the associated packages are not added to the
+    %compilation correctly because they are not called explicitly
+    if ~isdeployed
+        update_menu_scripts(hQt);
+    end
 
     % Attach listeners to linked GUI/context menus
     hLink = findobj(hQt,'Tag','menu_lock_ww_wl');
@@ -370,18 +368,22 @@ function add_exam_Callback(hObj,eventdata) %#ok<*INUSD>
         return
     end
 
+    % Initialize the workspace
+    obj   = getappdata(gcbf,'qtWorkspace');
+    exIdx = obj(1).examIdx; %all objects have the same index
+    nEx   = numel(obj);
+
     % Add the new exam
-    %TODO: does the full workspace need to be used? It's much faster, especially
-    %for large data sets to only grab the current qt_exam object
-    obj = getappdata(gcbf,'qtWorkspace');
     obj = obj.addexam(method,eName,eType);
 
-    % Modify the pop-up menu to reflect the changes
-    hPop = findobj(gcbf,'Tag','popupmenu_exams');
-    set(hPop,'String',{obj.name},'Value',numel(obj));
+    % Update the QT_EXAM objects' "examIdx" so that the most recently loaded
+    % data set is shown (only if a new object was created by "addexam")
+    if (numel(obj)>nEx)
+        obj(exIdx).examIdx = numel(obj); %#ok - no need to store...
+    end
 
-    % Update the qt_exam objects' "examIdx"
-    obj(obj(1).examIdx).examIdx = numel(obj); %#ok - no need to store...
+    % Update the GUI controls
+    update_controls(gcbf,'enable');
 
 end %add_exam_Callback
 
@@ -389,7 +391,7 @@ function add_training_data_Callback(hObj,eventdata)
 
     % Load training data
     obj         = getappdata(guifigure(hObj),'qtExamObject');
-    [fName, ok] = cine_dlgs('classification_load',mfilepath);
+    [fName, ok]; %this once provide a dialog and name - update at some point...
     if ~ok
         return
     end
@@ -441,7 +443,7 @@ function add_training_data_Callback(hObj,eventdata)
         end
 
         % Remove data immediately before contrast arrival
-        t0 = floor( t(obj.opts.preEnhance) );
+        t0 = floor( t(obj.opts) ); %should be injectionTime...
         dataNew(:,1:t0-1) = [];
         data = dataNew;
 
@@ -484,26 +486,6 @@ function calculate_maps_Callback(hObj,eventdata)
     update_controls(hQt,'enable');
 
 end %calculate_maps_Callback
-
-function change_exam_type_Callback(hObj,eventdata)
-
-    % Grab the figure handle, exam type sub-menus, and qt_exam object
-    hFig = guifigure(hObj);
-    obj  = getappdata(hFig,'qtExamObject');
-
-    % Determine if any change has actually occured. Changing the exam type can
-    % be computationally intensive....
-    if strcmpi( get(hObj,'Checked'), 'on' )
-        return
-    end
-
-    % Note that the menu property "Checked" will be updated in the listener of
-    % the qt_exam property "type"
-
-    % Set the new exam type
-    obj.type = strrep( get(hObj,'Tag'), 'menu_', '' );
-
-end %change_exam_type_Callback
 
 function change_snr_calc_Callback(hObj,eventdata)
 
@@ -627,7 +609,7 @@ function export_images_Callback(hObj,eventdata)
     % Disable user controls, perform the export operation, and re-enable the
     % user controls
     update_controls(hFig,'disable');
-    obj.export('maps',sDir);
+    obj.export('maps',sDir,lower( get(hObj,'Label') ));
     update_controls(hFig,'enable');
 
 end %export_images_Callback
@@ -715,8 +697,9 @@ function import_script_Callback(hObj,eventdata)
     end
 
     % Determine if the file already exists and request user's desired action.
-    isCopy = true; %initialzie the "copy" flag
-    if (exist(fName,'file')==2)
+    isCopy                 = true; %initialzie the "copy" flag
+    [~,scptFile,scptExt] = fileparts(fName);
+    if (exist(fullfile(obj.opts.scptDir,[scptFile scptExt]),'file')==2)
         btn = questdlg('The file already exists. What would you like to do?',...
                              'File Action','Overwrite','Keep Both','Keep Both');
         if isempty(btn)
@@ -761,8 +744,7 @@ function import_script_Callback(hObj,eventdata)
     catch ME
         if strcmpi(ME.identifier,'MATLAB:minrhs')
             warning('QUATTRO:scripts:nameChk',...
-                     ['Invalid script syntax. See README.txt',...
-                     '\n%s not loaded.\n'],fName);
+                    'Invalid script syntax. See README.txt. %s not loaded.',fName);
             delete(fName);
         else
             rethrow(ME);
@@ -815,8 +797,7 @@ function make_predictions_Callback(hObj,eventdata)
             t     = mInfo.xvals;
             tr    = mInfo.params.tf;
             fa    = mInfo.params.fa;
-            [t0,t10,r] = deal_cell(get(obj.opts,{'preEnhance','bloodT10',...
-                                                             'r1Gd'}));
+            [t0,t10,r] = deal_cell(get(obj.opts,{'bloodT10','r1'}));
 
             % Remove pre-contrast
             if obj.opts.t1Correction
@@ -1177,53 +1158,6 @@ function reports_Callback(hObj,eventdata)
     obj.opts.reportDir = fileparts(vararg{2});
 
 end %reports_Callback
-
-function smoothing_Callback(hObj,eventdata)
-
-    % Some necessary data/checks
-    hs     = guidata(hObj);
-    obj    = getappdata(hs.figure_main,'qtExamObject');
-    hAxes  = hs.axes_main;
-    hImage = findobj(hAxes,'Tag','DICOM');
-    if ~isNewSelection(hs.smoothing,hObj) || isempty(hImage)
-        return
-    end
-
-    % Determines which option is selected/gets exams object
-    hSmooth = getCheckedMenu(hs.smoothing);
-    mag     = get(hSmooth,'Label');
-    mag     = str2double(mag(1));
-
-    % Stores new and old scales
-    oldScale = obj.opts.scale;
-    set(obj.opts,'scale',mag);
-
-    % Deletes all children of AXES_MAIN
-    deleteChildren(hs.axes_main,'Text');
-    obj.delete_go('regions');
-
-    % Get x/y limits and x/y data for the current axes/image
-    lims   = get(hAxes,{'XLim','YLim'});
-    imData = get(hImage,{'XData','YData'});
-
-    % Ratio for image calculations
-    r = mag/oldScale;
-
-    % Update zoom limits
-    newZoomX = [0 imData{1}(2)*r]+0.5; new_zoom_y = [0 imData{2}(2)*r]+0.5;
-    set(hAxes,'XLim',newZoomX,'YLim',new_zoom_y);
-    zoom reset
-
-    % Changes axes limits for new scale
-    newXLim = r*lims{1}; 
-    newYLim = r*lims{2};
-    set(hAxes,'XLim',newXLim,'YLim',newYLim);
-
-    % Update GUI displays
-    obj.show('image','maps','rois','text');
-    obj.calc_stats;
-
-end %smoothing_Callback
 
 function trim_stats_Callback(hObj,eventdata)
 

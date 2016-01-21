@@ -50,6 +50,11 @@ function vals = mask(obj,varargin)
         if ~isempty(I)
             vals = I(vals);
         end
+
+    elseif isempty(mRoi)
+        warning(['QUATTRO:' mfilename ':missingRoiScale'],...
+                ['The QT_ROI property "scale" must be non-empty before a ',...
+                 'mask can be created.']);
     end
 
 end %qt_roi.mask

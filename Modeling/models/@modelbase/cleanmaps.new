@@ -1,0 +1,41 @@
+function [yc,r2] = cleanmaps(obj,varargin)
+%cleanmaps  Uses spatial data to recover bad fits
+%
+%   cleanmaps(OBJ) attempts to recover bad fits within a collection of parameter
+%   maps stored in the results structure of the modeling object OBJ (i.e. the
+%   maps were already computed).
+%
+%   cleanmaps(OBJ,Y,YC) attempts to recover bad fits within the maps specified
+%   by the ND array YC using the data in Y and the goodness-of-fit criteria
+%   stored in the last index of YC.
+%
+%   cleanmaps(...,'WaitBar',HWAIT) performs the operations described previously,
+%   using the waitbar handle, HWAIT, to graphically notify the user of the
+%   operation.
+
+    % Parse the inputs and define the waitbar flag
+    [r2,hWait,y,yc] = parse_inputs(obj,varargin{:});
+    isWait       = ~isempty(hWait);
+
+    % Update the waitbar
+    if isWait && ishandle(hWait)
+        waitbar(0,hWait,'0% Complete');
+        waitDlg = strrep(get(hWait,'Name'),'Calculating','Cleaning');
+        set(hWait,'Name',waitDlg);
+    end
+
+    % Initialize the workspace
+    f         = obj.fitFcn;
+    m         = size(yc);     %size of map data
+    w         = floor(log2(max(m)));
+    mW        = m(3)+w;
+    r2Thresh  = obj.fitThresh;
+    validErrs = {'MATLAB:eig:matrixWithNaNInf',...
+                              'optimlib:snls:UsrObjUndefAtX0'};
+
+    % Apply the R^2 threshold and perform the median filtering
+    ycFill = zeros(m);
+    for pIdx = 1:m(1)
+        ycFill(pIdx,:,:) = inpaint_nans( squeeze(yc(pIdx,:,:)), 1 );
+        ycFill(pIdx,:,:) = medfilt2( squeeze(yc(pIdx,:,:)), [w w] );
+    end

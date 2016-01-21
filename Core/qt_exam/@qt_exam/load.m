@@ -109,9 +109,11 @@ function varargout = load(varargin)
     end
 
     % Convert private fields
+    %TODO: QUATTRO no longer supports the use of custom DICOM dictionaries...
+    %Remove at a furutre time
     if isfield(s,'hdrs')
-        s.hdrs = cellfun(@convert_private_dicom_fields,s.hdrs,...
-                                                         'UniformOutput',false);
+%         s.hdrs = cellfun(@convert_private_dicom_fields,s.hdrs,...
+%                                                          'UniformOutput',false);
     end
 
     % Convert the cell/structure format of the Q-save to associated objects
@@ -120,7 +122,7 @@ function varargout = load(varargin)
     % Removes the ROI field
     if ~any(strcmpi(dataType,{'rois','any'})) || ~isfield(s,'rois') ||...
                              all(cellfun(@(x) all(~x(:).validaterois),{s.rois}))
-        s      = rmfields(s,'rois');
+        s      = rmfield(s,'rois');
     end
 
     % Determine what to do with the loaded data: (1) store in the qt_exam object
@@ -197,9 +199,11 @@ function varargout = load(varargin)
             end
         end
 
-        % Update the load directory/file
-        obj.opts.loadDir  = fPath;
-        obj.opts.loadFile = fName;
+        % Update the load directory/file. Since only one instance of the options
+        % exist (TODO: this will likely change in a future release), update the
+        % first qt_exam object in the stack
+        obj(1).opts.loadDir  = fPath;
+        obj(1).opts.loadFile = fName;
 
         % Notify the new objects of the data
         notify(obj,'initializeExam');
@@ -306,7 +310,7 @@ function s = save2objs(s)
         end
     end
 
-    % Convert the images/headers to qt_image objects
+    % Convert the images/headers to QT_IMAGE objects
     if all( isfield(s,{'imgs','hdrs'}) )
 
         % Loop through all stored exams

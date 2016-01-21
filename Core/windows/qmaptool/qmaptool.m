@@ -30,7 +30,7 @@
     % Validate that the image and map are the same size
     %TODO: update the code to accept images/maps of different size. This could
     %easily be handled if the phsyical image dimensions were available.
-    if any( img.imageSize~=map.imageSize )
+    if any(img.dimSize~=map.dimSize)
         error(['QUATTRO:' mfilename ':incommensurateImages'],...
                'The image and overlay must be the same size.');
     end
@@ -99,20 +99,15 @@
     end
 
     % Prepare display
-    hAx = axes('Parent',hFig,...
-               'Position',[10 60 512 512]./[figPos(3:4) figPos(3:4)],...
-               'Tag','axes_main',...
-               'XTickLabel','',...
-               'YTickLabel','');
+    hDisp = imdisp(hFig,[10 60 512 512],2);
+    set(hDisp.uipanel_image,'Units','Normalized');
+    set(hDisp.axes_image,   'Tag','axes_main');
+    set(hDisp.slider_bottom,'Callback',@change_transparency,...
+                            'Min',1e-10,... small # prevents alpha map from becoming array of zeros
+                            'Tag','slider_transparency',...
+                            'Value',0.5);
 
-    % Prepare tools
-    uicontrol('Parent',hFig,...
-              'Callback',@change_transparency,...
-              'Min',1e-10,... small # prevents alpha map from becoming array of zeros
-              'Position',[10 10 512 20]./[figPos(3:4) figPos(3:4)],...
-              'Style','Slider',...
-              'Tag','slider_transparency',...
-              'Value',0.5);
+    % Create a checkbox for limiting the map to a region
     uicontrol('Parent',hFig,...
               'Callback',@limit_map_Callback,...
               'ForegroundColor',[1 1 1],...
@@ -144,7 +139,7 @@
 
         % Cache the externally created listeners to the figure's application
         % data to be deleted alongside the figure
-        setappdata(hFig,'qtexam_listeners',l);
+        setappdata(hFig,'qtExamPropListeners',l);
     end
 
     % Deal the output
@@ -156,8 +151,8 @@
     %listeners to delete the image objects when the figure is deleted.
 
     % Show the image object as an RBG image and the map object as an overlay
-    img.show(hAx,true);
-    map.show(hAx);
+    img.show(hDisp.axes_image,'isRgb',true);
+    map.show(hDisp.axes_image);
 
     % Set GUI data
     guidata(hFig,guihandles(hFig));
@@ -180,9 +175,7 @@ function change_transparency(hObj,eventdata) %#ok<*INUSD>
     % For QUATTRO linked instances, also update all other maps of the same tag
     obj = getappdata(hFig,'qtExamObject');
     if ~isempty(obj) && obj.isvalid
-        for slIdx = 1:numel(obj.maps)
-            obj.maps(slIdx).(imgObj.tag).transparency = val;
-        end
+        [obj.maps.(imgObj.tag).transparency] = deal(val);
     end
     
 
@@ -202,7 +195,7 @@ function close_request_Callback(hObj,eventdata)
     end
 
     % Delete the listeners
-    delete( getappdata(hObj,'qtexam_listeners') );
+    delete( getappdata(hObj,'qtExamPropListeners') );
 
     % Delete the figure 
     delete(hObj);
@@ -234,8 +227,10 @@ function varargout = input_parser(varargin)
 
         %FIXME: the following is a workaround...
         obj     = parser.Results.obj;
-        mapTags = fieldnames( obj.maps(obj.sliceIdx) );
-        maps    = [obj.maps.(mapTags{obj.mapIdx})];
+        mapTags = fieldnames(obj.maps);
+        maps    = cellfun(@(x) obj.maps.(x)(obj.sliceIdx),...
+                                     mapTags(obj.mapIdx),'UniformOutput',false);
+        maps    = [maps{:}];
         [maps.transparency] = deal(0.5);
         [maps.color]        = deal('hsv');
         
@@ -254,7 +249,7 @@ function varargout = input_parser(varargin)
     % For the stand-alone functionality and for the ease of coding, convert
     % non-qt_image inputs to qt_image objects
     if ~strcmpi( class(results.image), 'qt_image' )
-        results.image = qt_image(results.image);
+        results.value = qt_image(results.value);
     end
     if ~strcmpi( class(results.map), 'qt_image' )
         results.map   = qt_image(results.map,'color','hsv','tag','overlay');

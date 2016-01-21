@@ -42,10 +42,9 @@ function guiPath = qt_path(opt)
             % Find QUATTRO.m and get the path
             guiPath = which('QUATTRO');
 
-            % When using which, there are a couple of cases to consider if the
+            % When using WHICH, there are a couple of cases to consider if the
             % output is empty: (1) the requested m-file is in the current
             % working directory or (2) the file could not be found on the path
-            % or in the current directory.
             if isempty(guiPath) && exist('QUATTRO.m','file')
                 guiPath = fullfile(pwd,'QUATTRO.m');
             elseif isempty(guiPath)
@@ -61,9 +60,9 @@ function guiPath = qt_path(opt)
                 guiPath    = mPath(1:guiPathIdx);
                 if ~exist( fullfile(guiPath,'QUATTRO.m'), 'file' )
                     error(['QUATTRO:' mfilename ':missingQuattroFile'],...
-                          ['Unable to locate a necessary file: "QUATTRO.m". Undo any\n',...
-                           'changes made to the QUATTRO directories or try downloading\n',...
-                           'the distribution again.\n\n']);
+                          ['Unable to locate a necessary file: "QUATTRO.m". ',...
+                           'Undo any changes made to the QUATTRO directories ',...
+                           'or try downloading the distribution again.']);
                 end
 
             end
@@ -75,25 +74,11 @@ function guiPath = qt_path(opt)
             % Determine where QUATTRO lives
             qtPath = qt_path;
 
-            % Search the main QUATTRO sub-directory for all associated sub-
-            % directories. Note that components are hard-coded and must be 
-            % updated when changes are made to the directory structure
-            %TODO: consider changing this code to parse the direcotry containing
-            %QUATTR.m instead of hard-coding individual directories
-            qtParts = {'Core',...
-                       'Examples',...
-                       'IO',...
-                       'Links',...
-                       'Modeling',...
-                       'Registration',...
-                       'Third Party'};
-            qtParts = cellfun(@(x) fullfile(qtPath,x),qtParts,...
-                                                         'UniformOutput',false);
-
             % Recursively read all QUATTRO sub-directories, and concatenates
             % those directories with the QUATTRO path and major QUATTRO
-            % sub-directories
-            guiPath = [{qtPath} qtParts read_dirs(qtParts)];
+            % sub-directories. Although GENPATH could be used, this stores the
+            % directories in a cell array
+            guiPath = [{qtPath} read_dirs(qtPath)];
 
         case 'script' %Find the directory of QUATTRO scripts
 
@@ -120,7 +105,7 @@ function sd = read_dirs(d)
     end
 
     % Parse all sub-directories of "d"
-    sd = parse_sub_dirs(d);
+    sd = gensubdirs(d);
 
     % Determine if any additional sub-directories exist for those directories
     % found in fList

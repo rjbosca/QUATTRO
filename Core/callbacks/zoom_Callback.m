@@ -1,4 +1,4 @@
-function zoom_Callback(hObj,eventdata) %#ok
+function zoom_Callback(hObj,~)
 %zoom_Callback  Handles QUATTRO zoom UI toggle button events
 %
 %   zoom_Callback(H,EVENT) enables or disables the figure zoom based on the

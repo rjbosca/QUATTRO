@@ -1,4 +1,4 @@
-classdef qt_reg < hgsetget
+classdef qt_reg < regopts
 %qt_reg  Create an image registration object
 %
 %   Specifying individual registration component options such as the optimizer
@@ -21,51 +21,55 @@ classdef qt_reg < hgsetget
 %   pixel dimensions and image size. The images are then translated to this
 %   center before any rotation operations are performed.
 
-    properties (AbortSet=false,SetObservable=true,GetObservable=true)
+    properties (AbortSet,SetObservable,GetObservable)
 
         % Target image
         %
-        %   A 2D or 3D array that constitutes the target image.
+        %   "imTarget" is a 2- or 3-D numeric array specifying the target image
+        %   and can be specified in one of two ways: (1) a 3D array where x, y,
+        %   and z indices are represented by the 1st, 2nd, and 3rd dimensions,
+        %   respecively, or (2) an array of QT_IMAGE objects. The latter is
+        %   generally prefereable because image object meta-data (when present)
+        %   is used to populate the QT_REG properties.
         %
-        %   The images can be specified in one of two ways: (1) a 3D array where
-        %   x, y, and z indices are represented by the 1st, 2nd, and 3rd
-        %   dimensions, respecively, or (2) an array of qt_image objects. The
-        %   latter is generally prefereable because image object meta-data (when
-        %   present) is used to populate the qt_reg properties.
+        %   Currently, only syntax (1) is supported...
         imTarget
 
         % Moving image
         %
-        %   A 2D or 3D array that constitues the moving image.
-        %
+        %   "imMoving" is a 2- or 3-D numeric array specifying the moving image.
         %   Type "help qt_reg.imTarget" for more information.
         imMoving
 
         % Dimensions of target image's x, y, and z voxels
         %
-        %   1-by-3 vector specifying the x, y, and z voxel dimensions of the
-        %   moving image, "imMoving", in physical coordinates.
+        %   "pixdimTarget" is a 3 element numeric row vector specifying the x,
+        %   y, and z voxel dimensions of the target image, "imTarget", in
+        %   physical coordinates.
         %
-        %   When disparate pixel dimensions (or image sizes) are present, qt_reg
+        %   When disparate pixel dimensions (or image sizes) are present, QT_REG
         %   resamples each image to a grid that spans the physical space of the
         %   largest image using the smallest physical voxel size in each
-        %   dimension (i.e. min([pixdim1;pixdim2],2)). Zero filling is performed
-        %   on the smaller of the two images if needed. 
+        %   dimension (i.e. min([pixdimTarget;pixdimMoving],2)). Zero filling is
+        %   performed on the smaller of the two images if needed. 
         %
         %   Any unit of distance can be used as long as the units are consistent
-        %   with pixdim2. Additionally, the units used here will be the units
-        %   used to represent the resulting transformation (e.g. mm or cm).
+        %   with pixdimTarget. Additionally, the units used here will be the
+        %   units used to represent the resulting transformation (e.g. mm or cm)
         %
         %   Default: [1 1 1]
-        pixdim1
+        pixdimTarget = [1 1 1];
 
         % Dimensions of moving image's x, y, and z voxels
         %
-        %   1-by-3 vector specifying the x, y, and z voxel dimensions of the
-        %   moving image, "imMoving", in physical coordinates.
+        %   "pixdimMoving" is a 3 element numeric row vector specifying the x,
+        %   y, and z voxel dimensions of the moving image, "imMoving", in
+        %   physical coordinates.
         %
-        %   Type "help qt_reg.pixdim1" for more information.
-        pixdim2
+        %   Type "help qt_reg.pixdimTarget" for more information.
+        %
+        %   Default: [1 1 1]
+        pixdimMoving = [1 1 1];
 
         % Moving image transformation
         %
@@ -75,99 +79,6 @@ classdef qt_reg < hgsetget
         %   post-registration transforms.
         wc
 
-        % Image interpolation scheme
-        %
-        %   A string specifying the image interpolation type when transforming
-        %   images. Valid strings: 'nearest', 'linear' (default), 'spline', and
-        %   'cubic'. For more information,
-        %
-        %   See also interpn
-        interpolation   = 'linear';
-
-        % Number of pyramid levels to use in registration
-        %
-        %   A scalar specifying the number of image pyramid levels to use when
-        %   performing the registration. By default, qt_reg does not use a
-        %   multi-level approach (i.e. multiLevel=1).
-        %
-        %   Note that the current implementation DOES NOT resample in the z
-        %   direction (slice direction of axial images) because the number of
-        %   samples in this direction is generally already small (on the order
-        %   of 20).
-        multiLevel      = 1;
-
-        % Registration optimizer scheme
-        %
-        %   A string specifyign the optimizer scheme to use. Valid strings are:
-        %   'reg-grad-step' (default) and 'nelder-mead'. 
-        %
-        %   When registering images in MATLAB (i.e. not using ITK) the
-        %   Nelder-Mead must be used as gradients of the various registration
-        %   components (interpolation, transformation, and similarity) have not
-        %   been programmed.
-        %
-        %   Future developments will incorporate additional optimizers within
-        %   the ITK framework.
-        optimizer       = 'reg-grad-step'; %similarity optimizer
-
-        % Similarity metric to optimize
-        %
-        %   A string specifying the similarity measure to use. Valid strings:
-        %
-        %   Name    Availability        Description
-        %   ---------------------------------------
-        %   'mmi'   ITK                 Mattes mutual information
-        %
-        %   'ncc'   ITK, MATLAB         Normalized cross-correlation
-        %
-        %   'mi'    MATLAB              Mutual information
-        metric          = 'mmi';
-
-        % Image transformation type
-        %
-        %   A string specifying the transformation type to use. Only 'rigid' and
-        %   'affine' are supported currently. Deformable transformations are in 
-        %   development.
-        transformation  = 'rigid';
-
-        % Registration optimizer options
-
-        % Maximum Gradient step size
-        %
-        %   Positive number specifying the maximum (i.e. initial) step size
-        %   used by gradient based optimizers. Default: 2.0
-        stepSizeMax     = 2.0;
-
-        % Minimum gradient step size
-        %
-        %   Positive number specifying the minimium gradient step size for
-        %   gradient based optimizers. When the step size falls below this
-        %   value, the registration task is terminated. Default: 1e-5
-        stepSizeMin     = 1e-5;
-
-        % Number of spatial samples to use in metric calculation
-        %
-        %   A positive number specifying either the number of samples (positive
-        %   integer) or the percentage (value between 0 and 1) of samples to be
-        %   used when calculating the similarity metric. For histogram type
-        %   metrics (e.g. MI) this setting can have a substantial impact on the
-        %   computation time as each evaluation of the similarity metric
-        %   requires N loop iterations where N is the number of pixels. 
-        %   Default: 0.1
-        nSpatialSamples = 0.1;
-
-        % Maximum number of iterations
-        %
-        %   A positive integer specifying the maximum number of iterations
-        %   allowed by the optimizer. Default: 500
-        nIterations     = 500;
-
-        % Minimum signal intensity to consider in metric
-        %
-        %   Minimum pixel signal intensity to use when calculating the image
-        %   similarity. Values below this threshold are ignored. Default: 0
-        signalThresh    = 0;
-
         % Application directory
         %
         %   "appDir" is a string specifying the directory to which temporary ITK
@@ -176,7 +87,7 @@ classdef qt_reg < hgsetget
 
     end
 
-    properties (Dependent=true)
+    properties (Dependent)
 
         % Current image similarity
         %
@@ -207,7 +118,7 @@ classdef qt_reg < hgsetget
 
     end
 
-    properties (Dependent=true,Hidden=true)
+    properties (Dependent,Hidden)
 
         % Similarity function handle
         %
@@ -240,7 +151,7 @@ classdef qt_reg < hgsetget
         %
         %   "offset" is the maximum displacement of the transformation specified
         %   by the property "wc" in each of the x, y, and z directions based on
-        %   the scaling of "pixdim2". Note that this property differs from
+        %   the scaling of "pixdimMoving". Note that this property differs from
         %   "displacement" in that it only measures the linear displacement
         %   (i.e. xi-T(xi) for i = x, y, z) not the Euclidian distance
         offset
@@ -251,7 +162,7 @@ classdef qt_reg < hgsetget
     
     end
 
-    properties (Hidden=true)
+    properties (Hidden)
 
         % Image dimensionality
         %
@@ -292,11 +203,11 @@ classdef qt_reg < hgsetget
 
         % qt_exam object handle
         %
-        %   "hExam" stores the qt_exam objects (a 1-by-2 array) for the qt_models sub-class
-        %   associated modeling data
+        %   "hExam" stores the qt_exam objects (a 1-by-2 array) 
         hExam = qt_exam.empty(1,0);
 
     end
+
 
     %---------------------------- Class Constructor ----------------------------
     methods
@@ -333,7 +244,6 @@ classdef qt_reg < hgsetget
             addlistener(obj,'imMoving',      'PostSet',@newregimage);
             addlistener(obj,'interpolation', 'PostSet',@newinterp);
             addlistener(obj,'metric',        'PostSet',@newmetric);
-            addlistener(obj,'transformation','PostSet',@newtransformation);
 
             % Parse the inputs
             if (nargin==0)
@@ -407,8 +317,12 @@ classdef qt_reg < hgsetget
 
         function val = get.identity(obj)
 
-            % Determine the image dimensions size
-            nd = obj.n;
+            % Determine the image dimensions size and default value
+            val = [];
+            nd  = obj.n;
+            if ~nd
+                return
+            end
 
             % Get the transformation specific identity function
             switch obj.transformation
@@ -464,8 +378,12 @@ classdef qt_reg < hgsetget
 
         function val = get.similarityFcn(obj)
 
-            % Target image alias
-            im = obj.imTarget;
+            % Target image alias and default value
+            val = [];
+            im  = obj.imTarget;
+            if isempty(im)
+                return
+            end
 
             % Grab the function handle
             switch obj.metric
@@ -491,18 +409,22 @@ classdef qt_reg < hgsetget
 
         function val = get.transformationFcn(obj)
 
-            % Dimensionality alias
-            nd = obj.n;
+            % Dimensionality alias and default value
+            nd  = obj.n;
+            val = [];
+            if ~nd
+                return
+            end
 
             % Get the appropriate transformation
-            switch obj.transformation
+            switch lower(obj.transformation)
                 case 'affine'
                     if nd==2
                         val = @affine2;
                     elseif nd==3
                         val = @affine3;
                     end
-                case 'rigid'
+                case 'euler'
                     if nd==2
                         val = @rigid2;
                     elseif nd==3
@@ -527,10 +449,10 @@ classdef qt_reg < hgsetget
         function val = get.x1(obj)
 
             val = []; %initialize
-            if isempty(obj.pixdim1) || isempty(obj.imTarget)
+            if isempty(obj.pixdimTarget) || isempty(obj.imTarget)
                 return
             end
-            dim = obj.pixdim1;
+            dim = obj.pixdimTarget;
             m   = obj.mTarget;
 
             % Get vectors of coordinates
@@ -544,10 +466,10 @@ classdef qt_reg < hgsetget
         function val = get.x2(obj)
 
             val = []; %initialize
-            if isempty(obj.pixdim2) || isempty(obj.imMoving)
+            if isempty(obj.pixdimMoving) || isempty(obj.imMoving)
                 return
             end
-            dim = obj.pixdim2;
+            dim = obj.pixdimMoving;
             m   = obj.mMoving;
 
             % Get vectors of coordinates
@@ -559,67 +481,6 @@ classdef qt_reg < hgsetget
         end %get.x2
 
     end %get.methods
-
-    %------------------------------- Set Methods -------------------------------
-    methods
-
-        function set.multiLevel(obj,val)
-
-            if isnumeric(val) && (numel(val)==1) && ~isnan(val) &&...
-                                                          ~isinf(val) && val > 0
-                obj.multiLevel = val;
-            end
-
-        end %set.multiLevel
-
-    end %set.methods
-
-    % This section of method definitions hides/restricts accesss of inherited
-    % handle methods
-    methods (Hidden = true)
-
-        function delete(obj)
-
-            % Delete any temporary files
-            delete( fullfile(obj.appDir,[obj.itkFile,'*']) )
-
-        end
-
-        function varargout = eq(obj,varargin)
-            [varargout{1:nargout}] = deal(varargin{:});
-        end
-        function varargout = findobj(obj,varargin)
-            [varargout{1:nargout}] = deal(varargin{:});
-        end
-        function varargout = findprop(obj,varargin)
-            [varargout{1:nargout}] = deal(varargin{:});
-        end
-        function varargout = ge(obj,varargin)
-            [varargout{1:nargout}] = deal(varargin{:});
-        end
-        function varargout = getdisp(obj,varargin)
-            [varargout{1:nargout}] = deal(varargin{:});
-        end
-        function varargout = gt(obj,varargin)
-            [varargout{1:nargout}] = deal(varargin{:});
-        end
-        function varargout = le(obj,varargin)
-            [varargout{1:nargout}] = deal(varargin{:});
-        end
-        function varargout = lt(obj,varargin)
-            [varargout{1:nargout}] = deal(varargin{:});
-        end
-        function varargout = ne(obj,varargin)
-            [varargout{1:nargout}] = deal(varargin{:});
-        end
-        function varargout = notify(obj,varargin)
-            [varargout{1:nargout}] = deal(varargin{:});
-        end
-        function varargout = setdisp(obj,varargin)
-            [varargout{1:nargout}] = deal(varargin{:});
-        end
-        
-    end
 
 end
 

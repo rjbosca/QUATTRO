@@ -32,31 +32,25 @@ function exam_tools(hQt)
               'Tag','text_exam_info',...
               'Visible','off');
 
+    drawnow;
+
 end %exam_tools
 
 
 %-----------------------Callback/Ancillary Functions----------------------------
 
-function change_exam_Callback(hObj,eventdata)
-
-    % Validate that a change occured
-    val = get(hObj,'Value');
-    if (val==getappdata(hObj,'currentvalue'))
-        return
-    end
+function change_exam_Callback(hObj,~)
 
     % Get the QUATTRO figure handle and the current qt_exam object
     hFig = gcbf;
     obj  = getappdata(hFig,'qtExamObject');
 
     % Disable user controls and update the "examIdx" of the current QUATTRO
-    % qt_exam object. This action will trigger the PostSet qt_exam object events
-    % that will update all application data and the QUATTRO GUI
+    % QT_EXAM object. This action will trigger "examIdx" post-set listeners that
+    % will update all application data and the QUATTRO GUI. After all updates
+    % have occured, re-enable the user controls
     update_controls(hFig,'disable');
-    obj.examIdx = val;
-
-    % Re-enable all user controls and update the application data
+    obj.examIdx = get(hObj,'Value');
     update_controls(hFig,'enable');
-    setappdata(hObj,'currentvalue',val);
 
 end %change_exam_Callback

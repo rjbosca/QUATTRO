@@ -1,17 +1,21 @@
-function updatemodels(src,eventdata)
+function updatemodels(src,~)
 %updatemodels  Updates pertient qt_models objects in the QUATTRO environment
 %
 %   updatemodels(SRC,EVENT) updates the option OPT with the new value VAL. This
 %   is a linker function that notifies other GUIs (e.g. qt_models GUI) of
 %   changes in the qt_options object
 
-    obj = eventdata.AffectedObject;
-    if isempty(obj.hQt) || ~ishandle(obj.hQt)
+    if isempty(src.hQt) || ~ishandle(src.hQt)
         return
     end
 
     % Get models object and loop through all objects
-    mObj = getappdata(obj.hQt,'modelsObject');
+    %FIXME: this function used to look for the modeling object in QUATTRO's
+    %application data. Because of the increasing complexity of the modeling
+    %package this is no longer viable. Fix this code so that it can be used in a
+    %much more general way (i.e., when a qt_options property that is also a
+    %modeling object property is updated, update the modeling object)
+    mObj = [];
     if isempty(mObj)
         return
     end

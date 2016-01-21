@@ -7,24 +7,23 @@ function hFig = imregtool(obj)
 %
 %   See also qt_reg.qt_reg
 
-    % Verify caller
-    if nargin<1 || ~strcmpi(class(obj),'qt_reg')
-        error(['QUATTRO:' mfilename ':guiConstructorChk'],...
-                             'Invalid call to GUI constructor. See qt_models.');
-    end
+    % Parse the inputs
+    [isQt,sliderVec,obj] = parse_inputs(obj);
 
-    % Prepare figure properties
-    figPos = [520 380 560 470];
-    isQt   = ~isempty(obj.hExam) && isvalid(obj.hExam) &&...
-                           ~isempty(obj.hExam.hFig) && ishandle(obj.hExam.hFig);
-    if isQt
-        % Determine new figure position
+    % Initialize common variables
+    figPos   = [520 380 529 420];
+    bkg      = [93 93 93]/255;
+    nSl1     = min( size(obj.imTarget) ); 
+    nSl2     = min( size(obj.imMoving) );
+    if isQt %set figure position to be near QUATTRO
         regPos      = get(obj.hExam.hFig,'Position');
         figPos(1:2) = regPos(1:2);
     end
-
-    % Color set up
-    bkg = [93 93 93]/255;
+    [examStr,targetStr] = deal({''});
+    if isQt && (numel(sliderVec)>1)
+        nSe1 = size( obj.hExam.imgs,2 );
+        nSe2 = size( obj.hExam.imgs,2 );
+    end
 
     % Prepare main figure
     obj.hFig = figure('Color',               bkg,...
@@ -53,106 +52,116 @@ function hFig = imregtool(obj)
                       'defaultaxesunits','pixels');
     add_logo(obj.hFig);
 
+    % Prepare the target image display using the IMDISP API
+    hs = imdisp(obj.hFig,[309 210 200 200],sliderVec);
+    set(hs.uipanel_image,'Tag','uipanel_axes_target');
+    set(hs.slider_bottom,'Callback',@change_slice_Callback,...
+                         'Max',nSl1,...
+                         'Min',1,...
+                         'SliderStep',[1/(nSl1-1) 2/(nSl1-1)],...
+                         'Tag','slider_slice_target',...
+                         'Value',1);
+    set(hs.axes_image,   'Tag','axes_target');
+    if isQt && (numel(sliderVec)>1)
+        set(hs.slider_side,'Callback',@change_series_Callback,...
+                           'Max',nSe1,...
+                           'Min',1,...
+                           'SliderStep',[1/(nSe1-1) 2/(nSe1-1)],...
+                           'Tag','slider_series_target',...
+                           'Value',1);
+    end
+
+    % Prepare the moving image display using the IMDISP API
+    hs = imdisp(obj.hFig,[309 10 200 200],sliderVec);
+    set(hs.slider_bottom,'Callback',@change_slice_Callback,...
+                         'Max',nSl2,...
+                         'Min',1,...
+                         'SliderStep',[1/(nSl2-1) 2/(nSl2-1)],...
+                         'Tag','slider_slice_moving');
+    set(hs.uipanel_image,'Tag','uipanel_axes_moving');
+    set(hs.axes_image,   'Tag','axes_moving');
+    if isQt && (numel(sliderVec)>1)
+        set(hs.slider_side,'Callback',@change_series_Callback,...
+                           'Max',nSe2,...
+                           'Min',1,...
+                           'SliderStep',[1/(nSe2-1) 2/(nSe2-1)],...
+                           'Tag','slider_series_moving',...
+                           'Value',1);
+    end
+
+
     % Prepare UI panels and axes
     hUip(1) = uipanel('Parent',obj.hFig,...
-                      'Position',[20 249 161 201],...
+                      'Position',[20 115 129 248],...
                       'Tag','uipanel_reg_options',...
                       'Title','Registration Options');
     hUip(2) = uipanel('Parent',obj.hFig,...
-                      'Position',[210 310 130 150],...
+                      'Position',[169 265 130 150],...
                       'Tag','uipanel_target_image',...
                       'Title','Select Target Images');
     hUip(3) = uipanel('Parent',obj.hFig,...
-                      'Position',[210 100 130 150],...
+                      'Position',[169 65 130 150],...
                       'Tag','uipanel_moving_image',...
                       'Title','Select Moving Images');
-    hAx(1)  =    axes('Parent',obj.hFig,...
-                      'Color','w',...
-                      'Position',[350 260 200 200],...
-                      'Tag','axes_target',...
-                      'XTickLabel','',...
-                      'YTickLabel','');
-    hAx(2)  =    axes('Parent',obj.hFig,...
-                      'Color','w',...
-                      'Position',[350 30 200 200],...
-                      'Tag','axes_moving',...
-                      'XTickLabel','',...
-                      'YTickLabel','');
-
-    % Get some controls info
-    targetStr = {''};
-    if isQt
-        targetStr{1} = num2str(obj.hExam.sliceIdx);
-    end
-    examStr  = {''};
-    if isQt
-        hPopExam = findobj(obj.hExam.hFig,'Tag','popupmenu_exams');
-        examStr  = get(hPopExam,'String');
-    end
+    hs = guihandles(obj.hFig); %grab the updated handles structure
 
     % Prepare and show images
     if isQt
-        % Get images from QUATTRO
-        obj.imTarget = obj.hExam.imgs(:,1).img2mat;
-        obj.imMoving = obj.hExam.imgs(:,str2double(targetStr{1})).img2mat;
-        hdr          = obj.hExam.metaData;
-        obj.pixdim1  = [hdr.PixelSpacing' hdr.SpacingBetweenSlices];
-        obj.pixdim2  = obj.pixdim1;
+
+        % Update the exam and target image index according to the QT_EXAM
+        % position
+        eObjs        = getappdata(obj.hExam.hFig,'qtWorkspace');
+        targetStr{1} = num2str(obj.hExam.sliceIdx);
+        examStr      = {eObjs.name};
+
+        % Show the QUATTRO images
+        obj.hExam.imgs(1,1).show(hs.axes_target,'isDispText',false);
+        obj.hExam.imgs(1,1).show(hs.axes_moving,'isDispText',false);
+
+    else
+        imshow(squeeze(obj.imTarget(:,:,1)),[],'Parent',hs.axes_target);
+        imshow(squeeze(obj.imMoving(:,:,1)),[],'Parent',hs.axes_moving);
     end
-    [n1,~] = min( size(obj.imTarget) );
-    [n2,~] = min( size(obj.imMoving) );
-    imshow(squeeze(obj.imTarget(:,:,1)),'Parent',hAx(1),'DisplayRange',[]);
-    imshow(squeeze(obj.imMoving(:,:,1)),'Parent',hAx(2),'DisplayRange',[]);
-    set(hAx(1),'Tag','axes_target');
-    set(hAx(2),'Tag','axes_moving');
 
     % Prepare UI controls
-    uicontrol('Parent',obj.hFig,...
+    uicontrol('Parent',hUip(1),...
               'BackgroundColor',1.2*bkg,...
               'Callback',@register_images_Callback,...
               'ForegroundColor','w',...
-              'Position',[60 160 70 22],...
-              'String','Register',...
+              'Position',[29.5 42 70 22],...
+              'String','Auto',...
               'Style','PushButton',...
               'Tag','pushbutton_register_images');
-    uicontrol('Parent',obj.hFig,...
-              'Callback',@change_image_Callback,...
-              'Max',n1,...
-              'Min',1,...
-              'Position',[350 241 200 20],...
-              'SliderStep',[1/(n1-1) 2/(n1-1)],...
-              'Style','Slider',...
-              'Tag','slider_target');
-    uicontrol('Parent',obj.hFig,...
-              'Callback',@change_image_Callback,...
-              'Max',n2,...
-              'Min',1,...
-              'Position',[350 11 200 20],...
-              'SliderStep',[1/(n2-1) 2/(n2-1)],...
-              'Style','Slider',...
-              'Tag','slider_moving');
+    uicontrol('Parent',hUip(1),...
+              'BackgroundColor',1.2*bkg,...
+              'Callback',@manual_adjust_Callback,...
+              'ForegroundColor','w',...
+              'Position',[29.5 10 70 22],...
+              'String','Manual',...
+              'Style','PushButton',...
+              'Tag','pushbutton_manual_images');
     uicontrol('Parent',hUip(1),...
               'Callback',@reg_popupmenu_Callback,...
-              'Position',[17 136 95 20],...
-              'String',{'Translation','Rigid','Affine'},...
-              'Tag','popupmenu_transformation');
+              'Position',[17 79 95 20],...
+              'String',{'NCC','MI','NMI','SMI','NSMI'},...
+              'Tag','popupmenu_similarity');
     uicontrol('Parent',hUip(1),...
               'Callback',@reg_popupmenu_Callback,...
-              'Position',[17 81 95 20],...
+              'Position',[17 133 95 20],...
               'String',{'Linear'},...
               'Tag','popupmenu_interpolation');
     uicontrol('Parent',hUip(1),...
               'Callback',@reg_popupmenu_Callback,...
-              'Position',[17 27 95 20],...
-              'String',{'NCC','MI','NMI','SMI','NSMI'},...
-              'Tag','popupmenu_similarity');
+              'Position',[17 187 95 20],...
+              'String',{'Translation','Rigid','Affine'},...
+              'Tag','popupmenu_transformation');
     uicontrol('Parent',hUip(2),...
-              'Callback',@change_image_Callback,...
+              'Callback',@change_exam_Callback,...
               'Position',[17 85 95 20],...
               'String',examStr,...
               'Tag','popupmenu_target');
     uicontrol('Parent',hUip(2),...
-              'Callback',@change_image_Callback,...
+              'Callback',@change_exam_Callback,...
               'HorizontalAlignment','Center',...
               'Position',[17 28 50 22],...
               'String',targetStr,...
@@ -160,12 +169,12 @@ function hFig = imregtool(obj)
               'Tag','edit_target',...
               'Value',1);
     uicontrol('Parent',hUip(3),...
-              'Callback',@change_image_Callback,...
+              'Callback',@change_exam_Callback,...
               'Position',[17 85 95 20],...
               'String',examStr,...
               'Tag','popupmenu_moving');
     uicontrol('Parent',hUip(3),...
-              'Callback',@change_image_Callback,...
+              'Callback',@change_exam_Callback,...
               'HorizontalAlignment','Center',...
               'Position',[17 41 50 22],...
               'String','1',...
@@ -186,24 +195,24 @@ function hFig = imregtool(obj)
     uicontrol('Parent',hUip(1),...
               'BackgroundColor',bkg,...
               'ForegroundColor','w',...
-              'Position',[17 157 100 15],...
-              'String','Transformation:',...
+              'Position',[17 100 100 15],...
+              'String','Similarity:',...
               'Style','Text',...
-              'Tag','text_transformation');
+              'Tag','text_similarity');
     uicontrol('Parent',hUip(1),...
               'BackgroundColor',bkg,...
               'ForegroundColor','w',...
-              'Position',[17 102 100 15],...
+              'Position',[17 154 100 15],...
               'String','Interpolation:',...
               'Style','Text',...
               'Tag','text_interpolation');
     uicontrol('Parent',hUip(1),...
               'BackgroundColor',bkg,...
               'ForegroundColor','w',...
-              'Position',[17 48 100 15],...
-              'String','Similarity:',...
+              'Position',[17 209 100 15],...
+              'String','Transformation:',...
               'Style','Text',...
-              'Tag','text_similarity');
+              'Tag','text_transformation');
     uicontrol('Parent',hUip(2),...
               'BackgroundColor',bkg,...
               'ForegroundColor','w',...
@@ -233,6 +242,14 @@ function hFig = imregtool(obj)
               'Style','Text',...
               'Tag','text_moving_series');
 
+    %TODO: menus will eventually exist here...
+    uimenu('Parent',obj.hFig,...
+           'Label','Options',...
+           'Tag','menu_options');
+    uimenu('Parent',obj.hFig,...
+           'Label','Review',...
+           'Tag','menu_review');
+
     % Prepare QUATTRO or non-QUATTRO controls
     if ~isQt
         delete(hUip(2:3));
@@ -248,97 +265,163 @@ function hFig = imregtool(obj)
         hFig = obj.hFig;
     end
 
+end %imregtool
+
 
 %-----------------------Callback/Ancillary Functions----------------------------
 
-    function key_press_Callback(hObj,eventdata)
 
-        % Determine action
-        if isempty(eventdata.Modifier)
-            if strcmpi(eventdata.Key,'escape')
-                close(obj.h_fig);
-            end
-        elseif strcmpi(eventdata.Modifier{1},'control')
-            if strcmpi(eventdata.Key,'c')
-                copy_params_Callback(hObj,eventdata);
-            end
+%---------------------------------------
+function key_press_Callback(~,eventdata)
+
+    % Determine action
+    if isempty(eventdata.Modifier)
+        if strcmpi(eventdata.Key,'escape')
+            close(gcbf);
         end
+    end
 
-    end %key_press_Callback
+end %key_press_Callback
 
+%----------------------------------------
+function register_images_Callback(hObj,~)
 
-    function register_images_Callback(hObj,eventdata)
+    % Get GUI information and objects
+    hFig   = guifigure(hObj);
+    hs     = guihandles(hObj);
+    regObj = getappdata(hFig,'qtRegObject');
+    exmObj = getappdata(hFig,'qtExamObject');
 
-        % Get GUI information and objects
-        h_fig  = guifigure(hObj);
-        hs     = guihandles(hObj);
-        regObj = getappdata(h_fig,'registrationObject');
-        exmObj = getappdata(h_fig,'qtExamObject');
+    % Get series and exam numbers
+    ex_n(2) = getappdata(hs.popupmenu_moving,'currentvalue');
+    ex_n(1) = getappdata(hs.popupmenu_target,'currentvalue');
+    se(2)   = getappdata(hs.edit_moving,'currentvalue');
+    se(1)   = getappdata(hs.edit_target,'currentvalue');
 
-        % Get series and exam numbers
-        ex_n(2) = getappdata(hs.popupmenu_moving,'currentvalue');
-        ex_n(1) = getappdata(hs.popupmenu_target,'currentvalue');
-        se(2)   = getappdata(hs.edit_moving,'currentvalue');
-        se(1)   = getappdata(hs.edit_target,'currentvalue');
+    % Store the images and image information
+    %FIXME: this only works if the same exam is being registered
+    regObj.imTarget     = exmObj.imgs(:,se(1)).img2mat;
+    regObj.imMoving     = exmObj.imgs(:,se(2)).img2mat;
+    hdr                 = exmObj.imgs(1,se(1)).metaData;
+    regObj.pixdimTarget = [hdr.PixelSpacing' hdr.SpacingBetweenSlices];
+    regObj.pixdimMoving = [hdr.PixelSpacing' hdr.SpacingBetweenSlices];
 
-        % Store the images and image information
-        for idx = 1:2
-            % Convert the images from a cell 2 an array
-            ims = exmObj.imgs{ex_n(idx)}(:,se(idx));
-            m   = size(ims{1});
-            ims = reshape( cell2mat(ims), m(1), [], m(2) );
-            regObj.(['im' num2str(idx)]) = permute(ims,[1 3 2]);
+    % Fire the registation
+    regObj.register;
 
-            % Store the image information
-            hdr = exmObj.hdrs{ex_n(idx)}(1,1);
-            regObj.(['pixdim' num2str(idx)]) =...
-                              [hdr.PixelSpacing' hdr.SpacingBetweenSlices];
-        end
+end %register_images_Callback
 
-
-        % Fire the registation
-        regObj.register;
-    end %register_images_Callback
-
-end %imregtool
-
-function change_image_Callback(hObj,eventdata)
+%-------------------------------------
+function change_exam_Callback(hObj,~)
 
     % Get the exams object
     hs  = guidata(hObj);
-    obj = getappdata(gcbf,'qtExamObject');
 
     % Store the tag and "_moving" or "_target"
     tag = get(hObj,'Tag');
     str = tag( strfind(tag,'_'):end );
 
-    % Get the series value
-    se = round( str2double( get(hs.(['edit' str]),'String') ) );
-    if isnan(se) || (se<1)
-        se = 1;
-    elseif (se>size(obj.imgs,2))
-        se = size(obj.imgs,2);
+    % Get the slider values and the exam number
+    seVal = round( get(hs.(['slider_series' str]),'Value') );
+    slVal = round( get(hs.(['slider_slice' str]),'Value') );
+    exVal = get(hObj,'Value');
+
+    % Verify a change in the curent object has occured and update the
+    % application data
+    if (exVal==getappdata(hs.(tag),'currentvalue'))
+        return
     end
-    set(hs.(['edit' str]),'String',int2str(se),'Value',se); %force a valid series value
-    curVal = getappdata(hObj,'currentvalue');
+    setappdata(hs.(tag),'currentvalue',exVal);
 
-    % Get the slice
-    sl = round( get(hs.(['slider' str]),'Value') );
-    set(hs.(['slider' str]),'Value',sl); %force an integer slice number
+    % Grab the QUATTRO workspace from the linked GUI and show the new image
+    exObjs = getappdata( getappdata(gcbf,'linkedfigure'), 'qtWorkspace' );
+    exObjs(exVal).imgs(slVal,seVal).show(hs.(['axes' str]),'isDispText',false);
 
-    % Get the exam number
-    e_num = get(hs.(['popupmenu' str]),'Value');
+end %change_image_Callback
 
-    % Verify a change in the curent object has occured
-    if (get(hs.(tag),'Value')==curVal)
+%--------------------------------------
+function change_series_Callback(hObj,~)
+
+    % Get the slider value value and reset it to the nearest whole number. Only
+    % proceed with changing the "sliceIdx" of the current qt_exam object if a
+    % slider value change has occured.
+    seVal = round(get(hObj,'Value'));
+    set(hObj,'Value',seVal);
+    if (getappdata(hObj,'currentvalue')==seVal)
         return
     end
 
-    % Update the current value application data
-    setappdata(hs.(tag),'currentvalue',get(hs.(tag),'Value'));
+    % Grab the handles structure and exam object
+    hs    = guidata(hObj);
+    obj   = getappdata(gcbf,'qtExamObject');
+    imTag = strrep( get(hObj,'Tag'), 'slider_series_', '' );
+    slVal = get(hs.(['slider_slice_' imTag]),'Value');
 
-    % Show the new image
-    oldImg = getappdata(hs.(['axes' str]),'imgObject');
-    obj.imgs(sl,se).show(oldImg);
+    % Grab the old image and show the new one
+    obj.imgs(slVal,seVal).show(hs.(['axes_' imTag]),'isDispText',false);
 
-end %reg_slider_Callback
+    % Update the application data
+    setappdata(hObj,'currentvalue',seVal);
+
+end %change_slice_Callback
+
+%---------------------------------------------
+function change_slice_Callback(hObj,~)
+
+    % Get the slider value value and reset it to the nearest whole number. Only
+    % proceed with changing the "sliceIdx" of the current qt_exam object if a
+    % slider value change has occured.
+    slVal = round(get(hObj,'Value'));
+    set(hObj,'Value',slVal);
+    if (getappdata(hObj,'currentvalue')==slVal)
+        return
+    end
+
+    % Grab the handles structure and exam object
+    hs    = guidata(hObj);
+    obj   = getappdata(gcbf,'qtExamObject');
+    imTag = strrep( get(hObj,'Tag'), 'slider_slice_', '' );
+    seVal = get(hs.(['slider_series_' imTag]),'Value');
+
+    % Grab the old image and show the new one
+    obj.imgs(slVal,seVal).show(hs.(['axes_' imTag]),'isDispText',false);
+
+    % Update the application data
+    setappdata(hObj,'currentvalue',slVal);
+
+end %change_slice_Callback
+
+%--------------------------------------
+function [isQt,sliderVec,obj] = parse_inputs(obj)
+
+    narginchk(1,1);
+
+    % Verify caller
+    if ~nargin || ~strcmpi(class(obj),'qt_reg')
+        error(['QUATTRO:' mfilename ':guiConstructorChk'],...
+                             'Invalid call to GUI constructor. See qt_models.');
+    end
+
+    % Determine if the registration object is being driven by a QUATTRO GUI
+    isQt     = ~isempty(obj.hExam) && isvalid(obj.hExam) &&...
+                           ~isempty(obj.hExam.hFig) && ishandle(obj.hExam.hFig);
+
+    % Apply QUATTRO GUI related settings
+    sliderVec = 2;
+    if isQt
+
+        % Get the images
+        obj.imTarget     = obj.hExam.imgs(:,1).img2mat;
+        obj.imMoving     = obj.hExam.imgs(:,obj.hExam.sliceIdx).img2mat;
+        hdr              = obj.hExam.metaData;
+        obj.pixdimTarget = [hdr.PixelSpacing' hdr.SpacingBetweenSlices];
+        obj.pixdimMoving = obj.pixdimTarget;
+
+        % Determine the validity of a series slider
+        if (size(obj.hExam.imgs,2)>1)
+            sliderVec(2) = 1;
+        end
+
+    end
+
+end %parse_inputs

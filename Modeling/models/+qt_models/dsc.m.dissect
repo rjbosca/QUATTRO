@@ -1,0 +1,115 @@
+classdef dsc < qt_models
+
+    properties (SetAccess = 'protected')
+
+        % VIF gamma variate fit parameters
+        %
+        %   A row vector of gamma variate parameters (i.e., [k alpha beta t0])
+        %   fitted to the vascular input function. For a complete description of
+        %   these parameters:
+        %
+        %   See also gamma_var
+        vifParams
+
+        % VIF coefficient of determination
+        %
+        %   A goodness-of-fit parameter for the estimated gamma-variate function
+        %   of the VIF
+        vifR2
+
+    end
+
+
+    %------------------------------ Other Methods ------------------------------
+    methods (Hidden)
+
+        function val = processFit(obj,val)
+            %processFit  Performs post-processing on fitted data
+            %
+            %   processFit calculates additional model parameters that are not
+            %   otherwise computed by the "fit" method. For DSC objects, the
+            %   regional cerebral blood volume is calculated
+
+            if all(isfield(obj.results,{'gammak','gammaa','gammab','bat'})) %rCBV map
+
+                % Generate the rCBV map
+                f      = obj.modelFcn;
+                vifInt = quadgk(@(t) f(obj.vifParams,t),0,obj.x(end));
+                ctInt  = arrayfun(@(x1,x2,x3,x4) quadgk(@(t) f([x1,x2,x3,x4],t),0,obj.x(end)),...
+                                    obj.results.gammak,...
+                                    obj.results.gammaa,...
+                                    obj.results.gammab,...
+                                    obj.results.bat);
+
+                % Store the map
+                obj.results.rcbv = (1/obj.alpha)*ctInt/vifInt;
+            end
+
+        end %processFits
+
+        function val = processGuess(obj,val)
+            %processGuess  Estimates model parameters from simple computations
+            %
+            %   processGuess attempts to estimate model parameters by performing
+            %   simple mathematical operations on the "y" data. This method is
+            %   only employed when "autoGuess" is enabled (i.e. true).
+
+            % Only continue if autoGuess is enabled and y data exist
+            if ~obj.autoGuess || isempty(obj.y)
+                return
+            end
+
+            % Use the VIF parameters as the initial guess
+            if isempty(obj.vifParams) || isempty(obj.vif)
+                obj.vifProc; %fire the VIF processor
+            end
+            val = obj.vifParams;
+
+        end %processGuess
+
+    end %methods (Access = 'private', Hidden = true)
+
+end %classdef
+
+
+function varargout = parse_inputs(varargin)
+
+    % Determine input syntax (either qt_exam object or time/signal/vif)
+    parser = inputParser;
+    if strcmpi(class(varargin{1}),'qt_exam')
+        parser.addRequired('hExam',@(x) x.isvalid);
+        opts = varargin(2:2:end);
+    elseif nargin==1
+        error(['qt_models:' mfilename ':invalidExamObj'],...
+                        'Single input syntax requires a valid qt_exam object.');
+    else
+        parser.addRequired('x',  @isnumeric);
+        parser.addRequired('y',  @isnumeric);
+        parser.addRequired('vif',@isnumeric);
+        opts = varargin(4:2:end);
+    end
+
+    % Add additional options to the parser
+    if ~isempty(opts)
+
+        % Validate the options
+        obj   = eval( mfilename );
+        props = properties(obj);
+        opts  = cellfun(@(x) validatestring(x,props),opts,...
+                                                         'UniformOutput',false);
+
+        % Assign the options to the parser
+        for prop = opts(:)'
+            parser.addParamValue(prop{1},obj.(prop{1}));
+        end
+
+    end
+
+    % Parse the inputs
+    parser.parse(varargin{:});
+
+    % Deal the outputs
+    varargout{1} = fieldnames(parser.Results);
+    varargout{2} = struct2cell(parser.Results);
+
+end

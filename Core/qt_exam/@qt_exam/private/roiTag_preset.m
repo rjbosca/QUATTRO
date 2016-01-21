@@ -1,8 +1,8 @@
-function roiTag_preset(obj,src,eventdata)
-%roiTag_preset  PreSet event for qt_exam property "roiTag"
+function roiTag_preset(obj,~,~)
+%roiTag_preset  Pre-set event for the QT_EXAM property "roiTag"
 %
-%   roiTag_preset(OBJ,SRC,EVENT) disables the display of qt_roi objects for
-%   which the "tag" property is equivalent to the current value of the qt_exam
+%   roiTag_preset(OBJ,SRC,EVENT) disables the display of QT_ROI objects for
+%   which the "tag" property is equivalent to the current value of the QT_EXAM
 %   object (OBJ) property "roiTag". SRC and EVENT are unused.
 
     % Disable the display for all ROIs with the property "tag" set to the

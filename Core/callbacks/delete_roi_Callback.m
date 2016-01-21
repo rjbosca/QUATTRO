@@ -1,4 +1,4 @@
-function delete_roi_Callback(hObj,eventdata)
+function delete_roi_Callback(hObj,~)
 %delete_roi_Callback  Callback for ROI or ROI label deleteion requests
 %
 %   delete_roi_Callback(H,EVENT)
@@ -24,47 +24,46 @@ function delete_roi_Callback(hObj,eventdata)
         % Confirm label delete
         names = get(hObj,'String');
         vals  = get(hObj,'Value');
-        if ~cine_dlgs('delete_roi_label',names(vals))
+        if (numel(vals)==1)
+            cName = names{vals};
+        else
+            cName = ''; %initialize
+            if (numel(vals)>2)
+                cName = sprintf('%s, ',names{vals(1:end-2)});
+            end
+            cName = [cName sprintf('%s and %s',names{vals(end-1:end)})];
+        end
+        str = questdlg(['Delete all data from ' cName '?'],...
+                        'Delete ROI Label(s)?','Yes','No','Yes');
+        if isempty(str) || ~strcmpi(str,'yes')
             return
         end
 
-        % Remove labels and update GUI
-        obj.rois.(obj.roiTag)(vals,:,:).delete;
+        % Grab the ROIs to be deleted, which will be passed as event data to the
+        % "roiChanged" event
+        rois = obj.rois.(obj.roiTag)(vals,:,:);
 
     else %delete the current instance of an ROI
 
-        % Create undo data for the ROI to be deleted and delete the ROI. Include
-        % the ROI name and scale so that the ROI can be restored properly if the
-        % undo button is pressed.
-        roi = obj.roi;
-
-        % Clone the ROI to be stored in the "roiUndo" stack
-        roiNew = roi.clone('name','scale','tag');
-
-        % The QUATTRO PostSet listener must be added here
-        fcn = @(src,event) update_roi_stats(src,event,hFig);
-        for roiObj = roiNew(:)'
-            addlistener(roiObj,'roiStats','PostSet',fcn);
-        end
-
-        % Create the undo and delete the original ROI object
-        obj.addroiundo(roiNew,'deleted');
-        roi.delete;
+        % Grab the ROIs to be deleted, which will be passed as event data to the
+        % "roiChanged" event
+        rois = obj.roi;
 
     end
 
-    % Notify the exam object of the deletion
-    notify(obj,'roiDeleted');
-    update_roi_listbox(hFig); %update after removing the deleted ROIs
+    % Delete the ROIs and notify the QT_EXAM object of the deletion, sending the
+    % "roiChanged" event data object. A clone of the ROI will be added to the
+    % undo stack and the ROI object will be deleted bye the "deleteroi" method.
+    % This will also update a number of UI  controls, e.g., the ROI list box
+    % through the "update_roi_tools" function
+    obj.deleteroi(rois);
+    notify(obj,'roiChanged');
 
     % Updates GUI according to remaining ROI information
-    if ~obj.exists.rois.any
-    %     update_controls(hFig,'hide');
-    end
     if ~obj.roi.validaterois
         set([findobj(hFig,'Tag','pushbutton_delete_roi')...
              findobj(hFig,'Tag','pushbutton_copy')], 'Enable','off');
     end
-    update_controls(hFig,'enable');
+    update_controls(hFig,'Enable');
 
 end %delete_roi_Callback

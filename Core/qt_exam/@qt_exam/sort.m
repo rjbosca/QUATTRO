@@ -1,7 +1,7 @@
 function sort(obj)
-%sort  Sorts qt_exam data according to the qt_exam property "type"
+%sort  Sorts QT_EXAM data according to the QT_EXAM property "type"
 %
-%   sort(OBJ) sorts the data stored in the current qt_exam object, OBJ,
+%   sort(OBJ) sorts the data stored in the current QT_EXAM object, OBJ,
 %   according to the value of the "type" (type 'help qt_exam.type' for more
 %   information) property. The property "imgs" is updated following the sort
 %   operation.
@@ -26,9 +26,10 @@ function sort(obj)
     % The number of series points should correspond to the number of images
     % divided by the number of slice locations (i.e. mod(nImgs,nSlices)==0).
     if mod(nImgs,nSlices)
-        error(['qt_exam:' mfilename ':incongruentImgStack'],'%s\n%s',...
-               'Image stack could not be sorted by slice/series',...
-               'As mod(nImages,nSlices)~=0.');
+        error(['qt_exam:' mfilename ':incongruentImgStack'],...
+              ['Image stack could not be sorted by slice/series because ',...
+               'mod(nImages,nSlices)~=0. Unable to prepare the exam as a ',...
+               '"%s" exam'],obj.type);
     end
 
     %TODO: what happens if ROIs exist? The ROIs should track with their current
@@ -44,8 +45,10 @@ function sort(obj)
             flds  = flds( isfield(hdrs,flds) );
             nFlds = cellfun(@(x) numel(unique( [hdrs.(x)] )),flds);
 
-            % Grab the tag to use for sorting
-            flds = flds(nSeries==nFlds);
+            % Grab the tag to use for sorting. The first condition was designed
+            % to handle 3D T1-weighted FSPGR acquisitions and the second was
+            % designed to handle 2D T2(*) acquisitions
+            flds = flds( (nSeries==nFlds) | (nFlds==(nSlices*nSeries)) );
             if isempty(flds)
                 error(['qt_exam:' mfilename ':unknownDceTimeFld'],...
                                        'Unable to detect the DCE time stamps.');

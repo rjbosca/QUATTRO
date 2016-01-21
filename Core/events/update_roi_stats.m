@@ -1,4 +1,4 @@
-function update_roi_stats(src,eventdata,hFig)
+function update_roi_stats(~,eventdata,hFig)
 %update_roi_stats  Updater for qt_roi "imgVals" post set event
 %
 %   update_roi_stats(SRC,EVENT,H) calculates and updates the ROI statistics

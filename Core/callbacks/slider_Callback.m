@@ -1,4 +1,4 @@
-function slider_Callback(hObj,eventdata)
+function slider_Callback(hObj,~)
 %slider_Callback  Callback for handling slice/series changes in QUATTRO
 %
 %   slider_Callback(H,EVENT) callback following changes to the slice and series

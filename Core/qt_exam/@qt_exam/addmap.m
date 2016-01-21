@@ -19,7 +19,7 @@ function addmap(obj,varargin)
 
     % Initialize some default map object properties
     mapObj.transparency = 0.5;
-    mapObj.color        = 'hsv';
+    mapObj.color        = 'jet';
 
     % The qt_image property "tag" is used to distinguish maps from basic images.
     % The latter uses the value 'image', which is protected to ensure proper
@@ -35,39 +35,41 @@ function addmap(obj,varargin)
     % "maps" property is a structure with indeterminate fields (at least until
     % some maps are computed) the structure must be initialized if it's empty
     mapStack = obj.maps;
-    if isempty(mapStack)
-        mapStack = repmat( struct(mapTag,[]), [slIdx 1] );
+    if isempty(mapStack) || ~isfield(mapStack,mapObj.tag)
+        imConst              = qt_image.makeconstant(mapObj.dimSize,nan);
+        imConst.tag          = mapTag;
+        mapStack(1).(mapTag) = repmat(imConst,[size(obj.imgs,1) 1]);
     end
 
     % Since the user can specify the map name and slice location, the data
     % location must be checked for duplicates to ensure that no data are
     % overwritten.
-    try %get the maps of interest
-        mapObjs = mapStack(slIdx);
-
-        % Create a unique name for the new map if one with the same name already
-        % exists
-        cnt = 1;
-        while cnt>0
-            %TODO: finish this function
-            if ~isfield(mapObjs,mapTag) || isempty(mapObjs.(mapTag))
-                break
-            end
-
-            % The name already exists, so append a "NEW*" to the end of the tag
-            % or rewrite a new "*"
-            mapTag = strrep(mapTag,['NEW' num2str(cnt)],'');
-            mapTag = [mapTag 'NEW' num2str(cnt)];
-            cnt    = cnt + 1;
-        end
-    catch ME
-        if ~strcmpi( ME.identifier, 'MATLAB:badsubscript' )
-            rethrow(ME)
-        end
-    end
+%     try %get the maps of interest
+%         mapObjs = mapStack(slIdx);
+% 
+%         % Create a unique name for the new map if one with the same name already
+%         % exists
+%         cnt = 1;
+%         while cnt>0
+%             %TODO: finish this function
+%             if ~isfield(mapObjs,mapTag) || isempty(mapObjs.(mapTag))
+%                 break
+%             end
+% 
+%             % The name already exists, so append a "NEW*" to the end of the tag
+%             % or rewrite a new "*"
+%             mapTag = strrep(mapTag,['NEW' num2str(cnt)],'');
+%             mapTag = [mapTag 'NEW' num2str(cnt)];
+%             cnt    = cnt + 1;
+%         end
+%     catch ME
+%         if ~strcmpi( ME.identifier, 'MATLAB:badsubscript' )
+%             rethrow(ME)
+%         end
+%     end
 
     % Update the stack of map objects
-    mapStack(slIdx).(mapTag) = mapObj;
+    mapStack.(mapTag)(slIdx) = mapObj;
 
     % Store the new stack in the exams object
     obj.maps = mapStack;
@@ -84,7 +86,7 @@ function addmap(obj,varargin)
         parser.addRequired('maps',@(x) all( strcmpi(class(x),'qt_image') ));
         parser.addRequired('name',@ischar)
         parser.addParamValue('slice',obj.sliceIdx,...
-                                               @(x) x>0 && x<=size(obj.imgs,1));
+                                           @(x) (x>0) && (x<=size(obj.imgs,1)));
 
         % Parse the inputs and deal the outputs
         parser.parse(varargin{:});

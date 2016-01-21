@@ -1,4 +1,4 @@
-function undo_Callback(hObj,eventdata)
+function undo_Callback(hObj,~)
 %undo_Callback  Callback for handling undo requests
 %
 %   undo_Callback(H,EVENT) performs an "undo" operation following activation of
@@ -9,20 +9,27 @@ function undo_Callback(hObj,eventdata)
     if ~strcmpi( get(hObj,'Style'), 'pushbutton' ) ||...
                                   ~strcmpi( get(hObj,'Tag'), 'pushbutton_undo' )
         warning(['QUATTRO:' mfilename ':invalidCaller'],...
-                 '%s must be called by the undo pushbutton.\n',mfilename);
+                 '%s must be called by the undo pushbutton.',mfilename);
         return
     end
 
     % Undo previous action and update GUI
     hs   = guidata(hObj);
     obj  = getappdata(hs.figure_main,'qtExamObject');
-    undo = obj.roiUndo(end);
+
+    % Fire the "roiundo" method to update the QT_EXAM object
+    undo = obj.undoroi;
     if isempty(undo)
         return
     end
 
-    % Fire the "roiundo" method to update the qt_exam object
-    obj.undoroi;
+    % Attach the appropriate listeners to the QT_ROI object and notify the
+    % QT_EXAM object that changes have occured to the ROIs
+    if strcmpi(undo.type,'deleted')
+        fcn = @(src,event) update_roi_stats(src,event,hs.figure_main);
+        addlistener(undo.roi,'roiStats','PostSet',fcn);
+    end
+    notify(obj,'roiChanged');
 
     % Move the slice/series indices and associated QUATTRO sliders
     [obj.sliceIdx,obj.seriesIdx] = deal(undo.index{1}{2:3});

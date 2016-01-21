@@ -1,10 +1,10 @@
-function roiIdx_preset(src,eventdata)
-%roiIdx_preset  PreSet event for qt_exam "roiIdx" property
+function roiIdx_preset(~,eventdata)
+%roiIdx_preset  Pre-set event for QT_EXAM "roiIdx" property
 %
-%   roiIdx_preset(SRC,EVENT) performs operations that modify the ROI display based
-%   on the current "roiIdx" property of the qt_exam object.
+%   roiIdx_preset(SRC,EVENT) performs operations that modify the ROI display
+%   based on the current "roiIdx" and "roiTag" properties of the QT_EXAM object.
 
-    % Grab the qt_exam object ROI index and the current ROIs
+    % Grab the QT_EXAM object ROI index and the current ROIs
     idx  = eventdata.AffectedObject.roiIdx;
 
     % Since the index is a structure with (potentially) multiple fields, grab the

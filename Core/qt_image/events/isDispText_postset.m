@@ -1,5 +1,5 @@
-function isDispText_postset(src,eventdata)
-%isDispText_postset  PostSet event for imgview "isDispText" property
+function isDispText_postset(~,eventdata)
+%isDispText_postset  Post-set event for imgview "isDispText" property
 %
 %   isDispText_postset(SRC,EVENT)
 

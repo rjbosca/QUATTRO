@@ -20,9 +20,7 @@ function varargout = mask2imellipse(I,normFlag)
     end
 
     % Validate image input
-    if ndims(I)~=2 || any(ndims(I)==1)
-        error([mfilename ':imageChk'],'I must be a 2D image');
-    end
+    validateattributes(I,{'numeric','logical'},{'2d','nonempty','real'});
 
     % n = numel( unique( bwlabel(I) ) );
     % if n~=2
@@ -42,12 +40,9 @@ function varargout = mask2imellipse(I,normFlag)
         end
         pos(idx,:) = [s(idx).Centroid-s(idx).EquivDiameter/2,...
                                     s(idx).EquivDiameter s(idx).EquivDiameter];
-    end
-
-    % Normalize
-    if normFlag
-        pos(:,1:2) = pos(:,1:2) ./ size(I,2);
-        pos(:,3:4) = pos(:,3:4) ./ size(I,1);
+        if normFlag
+            pos(idx,:) = scale_roi_verts(pos(idx,:),'imellipse',size(I));
+        end
     end
 
     % Deal the outputs

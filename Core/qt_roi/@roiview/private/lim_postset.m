@@ -1,4 +1,4 @@
-function lim_postset(obj,src,eventdata)
+function lim_postset(obj,~,eventdata)
 %lim_postset  PostSet event for X/Y axis limits property
 %
 %   lim_postset(OBJ,SRC,EVENT) completes roiview (OBJ) changes to the "XLim" 

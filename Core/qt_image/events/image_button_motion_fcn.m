@@ -1,4 +1,4 @@
-function image_button_motion_fcn(hObj,eventdata) %#ok
+function image_button_motion_fcn(hObj,~)
 %image_button_motion_fcn  Handles mouse motion events in figures with images
 %
 %   image_button_motion_fcn(H,EVENTDATA) is a generic callback for handling

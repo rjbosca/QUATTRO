@@ -1,19 +1,19 @@
-function update_roi_tools(src,eventdata)
+function update_roi_tools(obj,eventdata)
 %update_roi_tools  Updates the QUATTRO GUI following changes to ROI data
 %
-%   update_roi_tools(SRC,EVENT) updates the numerous UI tools in the "ROI Tools"
-%   panel in addition to notifying any ROI listboxes of the current data state.
+%   update_roi_tools(OBJ,EVENT) updates the various ROI UI tools using the
+%   QT_EXAM object OBJ and the event data object EVENT. EVENT must be generated
+%   from an 'roiChanged' event.
 
     % Validate the event source
-    if ~strcmpi(src.Name,'rois')
+    if ~any( strcmpi(eventdata.EventName,{'roiChanged'}) )
         error(['QUATTRO:' mfilename ':invalidEventSrc'],...
-                                    'Only "rois" post set events are allowed.');
+               'Only calls from QT_EXAM events ''roiChanged'' are allowed.');
     end
 
     % Grab the exam object, the rois, and some handles
-    obj  = eventdata.AffectedObject;
     rois = obj.rois;
-    hs   = guihandles(obj.hFig);
+    hs   = guidata(obj.hFig);
 
     % Determine if any ROIs exist on the current tag or in general
     isAnyRois = any( cellfun(@(x) any(x(:).validaterois),struct2cell(rois)) );
@@ -56,10 +56,10 @@ function update_roi_tools(src,eventdata)
     end
 
     % Prepare listbox and associated context menus
-    update_roi_listbox(hs.figure_main);
+    update_roi_listbox(hs.listbox_rois,obj);
 
     % Create the context menus
-    update_slice_context_menus(hs.listbox_rois);
+    update_roi_context_menus(hs.listbox_rois);
 
     % UI controls with respect to the updated ROIs
     update_controls(hs.figure_main,'enable');

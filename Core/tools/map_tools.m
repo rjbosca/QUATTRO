@@ -29,6 +29,8 @@ function map_tools(hQt)
               'Tag','popupmenu_maps',...
               'Value',1);
 
+    drawnow;
+
 end %maps_tools
 
 

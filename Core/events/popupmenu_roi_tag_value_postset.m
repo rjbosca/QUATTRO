@@ -43,8 +43,8 @@ function popupmenu_roi_tag_value_postset(src,eventdata)
 
     % Update the listbox, "Go to"->"Slice" context menus, and the current value
     % for the UI control
-    update_roi_listbox(hs.figure_main);
-    update_slice_context_menus(hs.listbox_rois);
+    update_roi_listbox(hs.listbox_rois,obj);
+    update_roi_context_menus(hs.listbox_rois);
     setappdata(hPop,'currentvalue',val);
 
 end %popupmenu_roi_tag_value_postset

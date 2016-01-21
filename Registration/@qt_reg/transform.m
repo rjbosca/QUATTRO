@@ -37,41 +37,41 @@ function im = transform(obj,varargin)
 %
 %   See also qt_reg
 
-% Parse inputs
-[w,tformDir] = parse_inputs(varargin{:});
+    % Parse inputs
+    [w,tformDir] = parse_inputs(varargin{:});
 
-% Return original image if no transform exist
-if isempty(w)
-    w = {obj.identity};
-elseif ~iscell(w)
-    w = {w(:)'}; %enforce row vector
-end
-
-% Cache the moving image
-im = obj.imMoving;
-
-% Get the transformation and interpolation functions
-fTrafo  = obj.transformationFcn;
-fInterp = @(x,xi) interpn(x{:},im,xi{:},obj.interpolation,-1);
-
-% Grab the current moving image grid and determine if an expansions/contraction
-% is necessary
-xi   = obj.x2;
-ext1 = obj.pixdim1.*obj.mTarget;
-ext2 = obj.pixdim2.*obj.mMoving;
-for extIdx = 1:length(ext1)
-    if ext1(extIdx)~=ext2(extIdx)
-        xi{extIdx} = obj.x1{extIdx};
+    % Return original image if no transform exist
+    if isempty(w)
+        w = {obj.identity};
+    elseif ~iscell(w)
+        w = {w(:)'}; %enforce row vector
     end
-end
 
-% Apply transformations
-for wcIdx = 1:length(w)
-    xi = fTrafo(w{wcIdx},xi,tformDir);
-end
+    % Cache the moving image
+    im = obj.imMoving;
 
-% Perform the image transformation
-im = fInterp(obj.x2,xi);
+    % Get the transformation and interpolation functions
+    fTrafo  = obj.transformationFcn;
+    fInterp = @(x,xi) interpn(x{:},im,xi{:},obj.interpolation,-1);
+
+    % Grab the current moving image grid and determine if an expansions/contraction
+    % is necessary
+    xi   = obj.x2;
+    ext1 = obj.pixdimTarget.*obj.mTarget;
+    ext2 = obj.pixdimMoving.*obj.mMoving;
+    for extIdx = 1:length(ext1)
+        if (ext1(extIdx)~=ext2(extIdx))
+            xi{extIdx} = obj.x1{extIdx};
+        end
+    end
+
+    % Apply transformations
+    for wcIdx = 1:length(w)
+        xi = fTrafo(w{wcIdx},xi,tformDir);
+    end
+
+    % Perform the image transformation
+    im = fInterp(obj.x2,xi);
 
 
     %------------------------------------------
@@ -93,4 +93,4 @@ im = fInterp(obj.x2,xi);
 
     end %parse_inputs
 
-end %transform
+end %qt_reg.transform

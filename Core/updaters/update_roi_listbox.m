@@ -1,36 +1,42 @@
-function update_roi_listbox(hFig)
+function update_roi_listbox(hList,obj)
 %update_roi_listbox  Applies conditional changes to the ROI listbox
 %
-%   update_roi_listbox(H) applies changes to the ROI listbox child of the
-%   QUATTRO instance specified by H.
+%   update_roi_listbox(H) applies changes to the ROI listbox child of QUATTRO
+%   specified by the handle H.
+%
+%   update_roi_listbox(H,OBJ) performs the same operation, but uses the QT_EXAM
+%   object OBJ. This syntax will run faster as the QUATTRO figure handle and
+%   exam object will not need to be found.
 
-    % Validate that QUATTRO called this function
-    if ~strcmpi( get(hFig,'Name'), qt_name )
-        return
+    % Parse and validate the input(s)
+    if (nargin==1) %only the listbox handle was provided
+        hFig = guifigure(hList);
+        obj  = getappdata(hFig,'qtExamObject');
+    end
+    if ~strcmpi( get(hList,'Type'), 'uicontrol' ) ||...
+            ~strcmpi( get(hList,'Style'), 'listbox' )
+        error(['QUATTRO:' mfilename ':invalidObjectHandle'],...
+              ['The provided handle must be a UI control with a value of ',...
+               '''listbox'' for the ''Style'' property.']);
+    elseif ~strcmpi( get(hList,'Tag'), 'listbox_rois' )
+        warning(['QUATTRO:' mfilename ':unknownListbox'],...
+                ['An unexpected signature for the listbox handle was ',...
+                 'detected. The listbox should correspond to QUATTRO''s ROI ',...
+                 'listbox, otherwise unanticipated results may occur.']);
     end
 
     % Get the exams object and various handles. Attempt to grab the requested
     % ROIs
-    obj     = getappdata(hFig,'qtExamObject');
-    hList   = findobj(hFig,'Tag','listbox_rois');
     rois    = obj.rois.(obj.roiTag);
     isValid = any( rois(:,:).validaterois, 2 );
 
     % Get current listbox index and ROI names
-    names           = obj.roiNames.(obj.roiTag);
-    nRoi            = size(rois(isValid,:,:),1);
-    vals            = get(hList,'Value');
-    vals(vals>nRoi) = [];
+    names       = obj.roiNames.(obj.roiTag);
+    nRoi        = size(rois(isValid,:,:),1);
+    vals        = obj.roiIdx.(obj.roiTag);
+    vals(~vals) = []; %remove index value of 0
 
     % Update listbox values
-    if isempty(vals) && isempty(names)
-        set(hList,'String',{},'Value',[]);
-    elseif isempty(vals)
-        set(hList,'String',names,'Value',nRoi);
-    elseif ~isempty(vals) && nRoi>1
-        set(hList,'Max',nRoi,'String',names,'Value',vals);
-    elseif ~isempty(vals) && nRoi<=1
-        set(hList,'Max',2,'String',names,'Value',vals);
-    end
+    set(hList,'Max',max([2 nRoi]),'String',names,'Value',vals);
 
 end %update_roi_listbox

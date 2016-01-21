@@ -27,10 +27,8 @@ function edit_options_Callback(hObj,eventdata) %#ok
                 isValid = any(val==1:2) && ~isinf(val);
             case 'hct'
                 isValid = (val<=1) && ~isinf(val);
-            case {'r1Gd','r2gd','bloodt10'}
+            case {'r2gd','bloodt10'}
                 isValid = ~isinf(val);
-            case 'preEnhance'
-                isValid = (val<=getappdata(hObj,'editMax'));
             case {'loadDir','saveDir','importDir'}
                 isValid = exist(val,'dir');
         end

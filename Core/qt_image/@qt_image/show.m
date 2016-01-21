@@ -1,10 +1,10 @@
 function varargout = show(obj,varargin)
-%show  Displays the qt_image object
+%show  Displays the QT_IMAGE object
 %
-%   show(OBJ) displays the image data from the qt_image object (or array of
-%   objects), OBJ. When an axis or axes exist from a previous call to "show",
-%   the view's data are refreshed. Otherwise, the qt_image viewer is created and
-%   used to display the image data.
+%   show(OBJ) displays the image data from the QT_IMAGE object (or array of
+%   objects), OBJ. When an axis or axes exist from a previous call to the "show"
+%   method, that view's data are refreshed. Otherwise, a light-weight viewer is
+%   created and used to display the image data.
 %
 %       Graphical tools:
 %       ----------------
@@ -22,23 +22,34 @@ function varargout = show(obj,varargin)
 %   image object. This syntax replaces all current image data on the specified
 %   axis/axes, if any exists.
 %
-%   show(...,RGB) displays the qt_image object as described previously first
-%   converting indexed image values to true color (i.e. RGB values) when the
-%   flag RGB is true.
-%
 %   show(OBJ,OLDOBJ) replaces all image views of a currently displayed qt_image
-%   object OLDOBJ with data from the qt_image object OBJ. All display properties
-%   (e.g., RGB, etc.) are copied from OLDOBJ. Both qt_image objects must be
+%   object OLDOBJ with data from the QT_IMAGE object OBJ. All display properties
+%   (e.g., RGB, etc.) are copied from OLDOBJ. Both QT_IMAGE objects must be
 %   scalars. This syntax is used by QUATTRO to update the axis/axes when, for
 %   example, the slice location is changed.
+%
+%   show(...,'PARAM1',VAL1,...) performs the specified operations as described
+%   previously in addition to applying the parameter/value pairs specified by
+%   PARAM1/VAL1, etc. Valid parameters options are:
+%
+%       Show options:
+%       -------------
+%       'isDispText'    - a logical scalar that, when FALSE, disables on-image
+%                         text. By default, QT_IMAGE objects display any
+%                         on-image text
+%
+%       'isRgb'         - a logical scalar that, when TRUE, displays the image
+%                         as an RGB image, converting the indexed voxel values
+%                         based on the QT_IMAGE properties
+%
 %
 %   H = show(...) also returns the handle(s) of the newly updated image HGOs
 
     % Parse inputs and pass to the imgview object
-    [obj,hAxNew,isRgb,oldObj] = parse_inputs(obj,varargin{:});
+    [obj,isDispText,isRgb,hAxNew,oldObj] = parse_inputs(obj,varargin{:});
 
     % There are two cases to handle in the following: (1) the user is requesting
-    % that current view be updated by specifying the qt_image object to be
+    % that current view be updated by providing a QT_IMAGE object as input to be
     % replaced or (2) a new display is being requested.
     if ~isempty(oldObj)
 
@@ -51,7 +62,8 @@ function varargout = show(obj,varargin)
         % For each imgview object, copy the display properties from the previous
         % object and deconstruct the image
         for viewIdx = 1:nViewObjs
-            % Create the actual imgview object
+
+            % Create the actual IMGVIEW object
             newViewObjs(viewIdx)            = imgview(obj);
 
             % Copy the properties
@@ -59,8 +71,16 @@ function varargout = show(obj,varargin)
             newViewObjs(viewIdx).isRgb      = oldViewObjs(viewIdx).isRgb;
             newViewObjs(viewIdx).isDispText = oldViewObjs(viewIdx).isDispText;
 
-            % Deconstruct the image
+            % Destroy the current axis contents to ensure that new images are
+            % displayled correctly or deconstruct the image to "refresh" the
+            % image view. When the any of the image dimensions are not equal,
+            % reset the axis to ensure that an image replacement operation will
+            % occur in the post-set listeners.
+            if any(oldObj.dimSize(1:2)~=obj.dimSize(1:2))
+                cla(oldViewObjs.hAxes,'reset')
+            end
             notify(oldViewObjs(viewIdx),'deconstructView');
+
         end
 
     elseif isempty(oldObj) && isempty(hAxNew) %data refresh
@@ -74,9 +94,9 @@ function varargout = show(obj,varargin)
 
     else %axis handle(s) - replace plot
 
-        % This is a special case. If the qt_image object calling the "show"
-        % method already has a view object on one of the axes, dconstruct the
-        % previous object
+        % **Special case** If the QT_IMAGE object calling the "show" method
+        % already has a view object on one of the axes, dconstruct the previous
+        % object
         if ~isempty(obj.imgViewObj)
             isOldView = cellfun(@(x) any(x==[obj.imgViewObj.hAxes]),hAxNew);
             if any(isOldView)
@@ -88,10 +108,14 @@ function varargout = show(obj,varargin)
         % Create new imgview objects for the new axis or axes on which to
         % display images
         nAxNew                = numel(hAxNew);
-        newViewObjs(1:nAxNew)  = imgview(obj);
+        newViewObjs(1:nAxNew) = imgview(obj);
 
-        % Set the RGB property
-        [newViewObjs(:).isRgb] = deal(isRgb);
+        % Set the RGB and text display properties
+        %FIXME: this should be updated (see optional input syntax) to support a
+        %param/value FOR loop. Would this work with the other syntaxes described
+        %in the help section?
+        [newViewObjs(:).isRgb]      = deal(isRgb);
+        [newViewObjs(:).isDispText] = deal(isDispText);
 
     end
 
@@ -118,19 +142,19 @@ function varargout = show(obj,varargin)
         varargout{1}   = [newViewObjs(:).hImg];
     end
 
-end %show
+end %qt_image.show
 
 
 %----------------------------------------------------
 function [obj,varargout] = parse_inputs(obj,varargin)
 
     % Validate the number of inputs
-    narginchk(1,3);
+    narginchk(1,6);
 
     % There are two cases to consider: 1) the user called "show" on a stack of
     % image objects and 2) the user called "show" on a single element of an
-    % image object array. Note that these cases for an array with one image
-    % object are degenerate
+    % image object array. Cases (1) and (2) are equivalent for a scalar image
+    % array
     %
     % If a display figure does not already exist, it is easy: show the imgviewer
     % and be down with it. However, what to do if the viewer (or QUATTRO) exists
@@ -139,17 +163,20 @@ function [obj,varargout] = parse_inputs(obj,varargin)
     if (nargin==1) && ~any(validViewInd(:))
         varargin{1} = obj.viewer;
         obj         = obj(1);
-    elseif (nargin==2) && numel(obj)>1
+    elseif (nargin==2) && (numel(obj)>1)
         error(['qt_image:' mfilename ':tooManyImgObjs'],...
-              ['Show may be called on only 1 qt_image object at a time.\n',...
-               'Try obj(1).show, where obj is the current image object.\n']);
+              ['Show may be called on only 1 qt_image object at a time. ',...
+               'Try obj(1).show, where obj is the current QT_IMAGE object.']);
     end
 
     % Set up parser
     parser = inputParser;
-    parser.addOptional('showObj',[],@(x) all(ishandle(x)) ||...
-                                                  strcmpi(class(x),'qt_image'));
-    parser.addOptional('useRGB',false,@(x) islogical( logical(x) ));
+    parser.addOptional('showObj',[],...
+                         @(x) all(ishandle(x)) || strcmpi(class(x),'qt_image'));
+    parser.addParamValue('isRGB',false,...
+                             @(x) validateattributes(x,{'logical'},{'scalar'}));
+    parser.addParamValue('isDispText',true,...
+                             @(x) validateattributes(x,{'logical'},{'scalar'}));
 
     % Parse and grab the restuls and initialize the optional qt_image object
     % input field to satisfy the output syntax
@@ -164,9 +191,9 @@ function [obj,varargout] = parse_inputs(obj,varargin)
         results.showObj = [];
         if (numel(results.oldObj)>1)
             error(['qt_image:' mfilename ':tooManyOldImgObjs'],...
-                  ['Refresh syntax of "show" may be called with only one\n',...
-                   'qt_image object to be refreshed. Type ''help qt_image.show\n',...
-                   'for more information.\n']);
+                  ['Refresh syntax of "show" may be called with only one ',...
+                   'qt_image object to be refreshed. Type ''help qt_image.show ',...
+                   'for more information.']);
         end
     else %axis/axes handle(s) were provided
         % For ease in dealing the axis handle(s) to individual image view

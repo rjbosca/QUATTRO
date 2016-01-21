@@ -1,8 +1,8 @@
 function varargout = import(varargin)
-%import  Import image supported by qt_exam
+%import  Import image supported by QT_EXAM
 %
 %   [S,PATHNAME] = import provides UI tools allowing the user to select and
-%   import a directory of DICOM images as a qt_exam structure. A structure
+%   import a directory of DICOM images as a QT_EXAM structure. A structure
 %   containing an array of qt_image objects is returned in addition to the
 %   detected exam type string and the validated path from which the data were
 %   loaded.
@@ -14,9 +14,9 @@ function varargout = import(varargin)
 %   by the input DIR.
 %
 %   OBJ = import(OBJ,...) performs the same operations as defined previously,
-%   but updates the qt_exam object (OBJ) properties with the imported image data
+%   but updates the QT_EXAM object (OBJ) properties with the imported image data
 %   in lieu of returning a structure. No output is generated when this method is
-%   called with a valid qt_exam object.
+%   called with a valid QT_EXAM object.
 %
 % 
 %   SEARCHING DIRECTORIES FOR IMAGES:
@@ -33,37 +33,51 @@ function varargout = import(varargin)
 %
 %   See also addexam
 
+    %---------------
+    % Input parsing
+    %---------------
+
+    % Initialize the output since there are multiple exit points
     if nargout
-        [varargout{1:nargout}] = deal([]); %initialize output
+        [varargout{1:nargout}] = deal([]);
     end
 
-    [obj,name,pathName] = parse_inputs(varargin{:}); %parse inputs
+    % Parse the inputs
+    [obj,name,pathName,guiDlgs] = parse_inputs(varargin{:}); %parse inputs
     if isempty(name) || isempty(pathName)
+        %TODO: there has to be a way to determine if the inputs to this function
+        %(i.e., NAME and DIR) were accidentally reveresed. If so, let the user
+        %know. This has been a constant struggle for me...
         return
     end
     if ~isempty(obj)
         varargout{1} = obj;
     end
 
+    %------------------------------------
+    % Data import and initial validation
+    %------------------------------------
+
     % Import exam data
-    img = qt_image(pathName,'guiDialogs',obj.guiDialogs);
+    img = qt_image(pathName,'guiDialogs',guiDlgs);
     if isempty(img)
         return
     elseif (numel(img)==1) && isempty(img.fileName)
         warning(['qt_exam:' mfilename ':noImgsImported'],...
-                ['No images were imported. Likely cause:\n\n',...
-                 '\tNested sub-directories\n\n',...
-                 'Try dumping all image files into a single directory.\n']);
+                ['No images were imported. Likely cause: nested ',...
+                 'sub-directories. Try dumping all image files into a ',...
+                 'single directory.']);
         return
     end
 
-    % Sort by image type and determine if all are the same type
-    imgType = unique({img.format});
-    if (numel(imgType)>1)
+    % Sort by image type and determine if all qt_image objects share the same
+    % "format" value 
+    [nType,imgType] = unique_vals(img,'format');
+    if (nType>1)
         %TODO: write code to handle multiple image types
         warning(['qt_exam:' mfilename ':multiImgChk'],...
-                ['Multiple image types were detected\n',...
-                 'Terminating import operation...\n']);
+                ['Multiple image types were detected. Terminating ',...
+                 'import operation...']);
         return
     end
 
@@ -97,12 +111,12 @@ function varargout = import(varargin)
 
         % Verify the manufacturer since tags used by find_exam_type are
         % manufacturer dependent
-        mfg = unique( {hdrs.(mfgTag)} );
-        if numel(mfg) > 1
+        nMfg = unique_vals(hdrs,mfgTag);
+        if (nMfg>1)
             %TODO: write code to handle multiple manufacturers
             warning(['qt_exam:' mfilename ':multiImgChk'],...
-                    ['Multiple manufacturers were detected\n',...
-                     'Terminating import operation...\n']);
+                    ['Multiple manufacturers were detected. Terminating ',...
+                     'import operation...']);
             return
         end
 
@@ -111,9 +125,9 @@ function varargout = import(varargin)
 
     end
 
-    %TODO: it would be nice to verify if multiple exams and or series exists. The
-    %current code assumes that the user has specified a folder with a single series
-    %in it.
+    %TODO: it would be nice to verify if multiple exams and or series exists.
+    %The current code assumes that the user has specified a folder with a single
+    %series in it.
 
     % Split exams
     % if m(3)>1
@@ -122,12 +136,12 @@ function varargout = import(varargin)
     %         img_cell{i} = squeeze(s.imgs(:,:,i));
     %     end
     %     s.name = get_multi_exam_list(s.hdrs(1,1,:),s.type);  % Store exam names
-    %     s.imgs = img_cell;                                     % Store images/headers
-    %     [t{1:m(3)}] = deal(s.types); s.types = t;              % Store exam types
+    %     s.imgs = img_cell;                                   % Store images/headers
+    %     [t{1:m(3)}] = deal(s.types); s.types = t;            % Store exam types
     % end
 
     % Determine output format
-    if exist('obj','var') %method called with a qt_exam object; store the data
+    if exist('obj','var') %method called with a QT_EXAM object; store the data
         obj.imgs           = img;
         obj.type           = eType; %implicitly notifies "initializeExam" event
         obj.name           = name;
@@ -169,9 +183,9 @@ function varargout = parse_inputs(varargin)
     % before parsing in the event that the user cancels the directory selection
     [varargout{1:nargout}] = deal([]);
 
-    % Perform the initial setup on the qt_exam object. If no object exists,
-    % simply append an empty to the first input slot. To provide an easier means
-    % of parsing later
+    % Perform the initial setup on the QT_EXAM object. Since IMPORT is a static
+    % QT_EXAM method, an object is not guaranteed to be an input. Simply append
+    % an empty to the first input slot to facilitate the parsing operation
     if ~strcmpi( class(varargin{1}), 'qt_exam' )
         varargin = [{qt_exam.empty(1,0)} varargin];
     end
@@ -185,7 +199,7 @@ function varargout = parse_inputs(varargin)
     parser.parse(varargin{:}); %parse the inputs
     results = parser.Results;
 
-    % When using the "import" method with a valid qt_exam object, the qt_options
+    % When using the "import" method with a valid QT_EXAM object, the qt_options
     % "importDir" property is used to remember the last location of import and
     % will be used if the user does not otherwise specify, as an optional input
     % argument, the directory from which to import images.
@@ -199,9 +213,14 @@ function varargout = parse_inputs(varargin)
     end
 
     %TODO: this is only temporary...
-    fInfo = dir(results.path);
-    if all([fInfo.isdir])
-        fInfo        = {fInfo.name};
+    fInfo  = dir(results.path);
+    fNames = arrayfun(@(x) fullfile(results.path,x.name),fInfo,...
+                                                         'UniformOutput',false);
+    isDir  = [fInfo.isdir]';
+    isImg  = cellfun(@(x,y) ~x && isimage(y),num2cell(isDir),fNames);
+    isNest = isDir | ~isImg;
+    if all(isNest)
+        fInfo        = {fInfo(isDir).name};
         fInfo        = fInfo( ~strcmpi('.',fInfo) & ~strcmpi('..',fInfo) );
         results.path = cellfun(@(x) fullfile(results.path,x),fInfo,...
                                                          'UniformOutput',false);
@@ -210,35 +229,43 @@ function varargout = parse_inputs(varargin)
     % Store outputs
     varargout = struct2cell(results);
 
+    % Because there is a possiblity of returning an empty exam object, for which
+    % there is no "guiDialogs" property, the value of that field is instead
+    % determined here and returned as an additional output
+    varargout{end+1} = isempty(results.examObj) || results.examObj.guiDialogs;
+
 end %parse_inputs
 
-% Attempts to determine exam type
+%----------------------------------
 function eType = get_exam_type(img)
+%get_exam_type  Attempts to determine exam type
 
-    % Initialize
+    % Initialize the exam type and concatenate the meta-data into a single array
+    % of structures for ease of access
     eType = 'generic';
     hdrs  = [img(:).metaData];
+    nImgs = numel(hdrs);
 
     % Generic DICOM tag lookup
     tagModality = dicomlookup('0008','0060'); %Modality
-    tagPosition = dicomlookup('0020','0032'); %ImagePositionPatient
-    tagSliceLoc = dicomlookup('0020','1041'); %SliceLocation
     tagInstance = dicomlookup('0020','0013'); %InstanceNumber
+    tagSliceLoc = dicomlookup('0020','1041'); %SliceLocation
 
-    % Determine a few properties
-    nSlices = unique_vals(hdrs,tagSliceLoc);
+    % The number of slices and slice location are necessary in a number of
+    % nested functions and in the code that follows
+    [nSlices,sliceLocs] = unique_vals(hdrs,tagSliceLoc);
 
-    % hdrs is an array of structures, this function helps with validating
-    % individual header fields
+    % Helper function for validating
     isValidFld = @(fld) isfield(hdrs,fld);
 
     % Perform the work
     if strcmpi(hdrs(1).(tagModality),'CT')
 
         % CT specific tags
-        tagGsi = dicomlookup('0053','1079'); %(GSI flag)
-        tagKvp = dicomlookup('0053','1075'); %Private_0053_1075 (seems to correspond
-                                             %to KVp on GE scanners)
+%         tagSliceLoc = dicomlookup('0020','0032'); %ImagePositionPatient
+        tagGsi      = dicomlookup('0053','1079'); %(GSI flag)
+        tagKvp      = dicomlookup('0053','1075'); %Private_0053_1075 (seems to correspond
+                                                  %to KVp on GE scanners)
 
         % Determine exam type and sort by exam specific field
         if is_gsi
@@ -246,11 +273,10 @@ function eType = get_exam_type(img)
             img = img.sort(tagKvp);
         end
 
-        % Reshape and sort by the number of slices
-        img = reshape(img,nSlices,[]);
-        img = img.sort(tagPosition);
-
     elseif strcmpi(hdrs(1).(tagModality),'PT')
+
+        % PET specific tags
+        tagSliceLoc = dicomlookup('0020','0032'); %ImagePositionPatient
 
     elseif strcmpi(hdrs(1).(tagModality),'MR')
 
@@ -313,12 +339,24 @@ function eType = get_exam_type(img)
             img = img.sort(tagInstance);
         end
 
-        % Get the number of slices and reshape
-        nSlices = unique_vals(hdrs,tagSliceLoc);
+    end
+
+
+    %------------------------
+    % Reformat qt_image array
+    %------------------------
+
+    % Determine if the array of qt_image can be arranged (based on the number of
+    % images and slice locations) by reshaping the array of qt_image objects or
+    % if missing data must be "zero-filled"
+    if mod(nImgs,nSlices) %missing images if non-zero
+    else
         img     = reshape(img,nSlices,[]);
         img     = img.sort(tagSliceLoc);
-
     end
+
+
+    %------------------------- Exam type test functions ------------------------
 
         function tf = is_dce
 
@@ -338,8 +376,8 @@ function eType = get_exam_type(img)
             % Determine if either of the time position DICOM tags contain the
             % right number of elements
             isMultipleTimePts = max([numTrigger numAcqTimes])>1 &&...
-                               (numel(hdrs)==(nSlices*numTrigger) ||...
-                                numel(hdrs)==(nSlices*numAcqTimes));
+                                    (nImgs==(nSlices*numTrigger) ||...
+                                     nImgs==(nSlices*numAcqTimes));
             if isMultipleTimePts
                 tf = true;
             end
@@ -435,8 +473,9 @@ function eType = get_exam_type(img)
             
 end %get_exam_type
 
-% Determines unique field values of header cell
-function n = unique_vals(hdrs,fld)
+%----------------------------------------
+function [n,vals] = unique_vals(hdrs,fld)
+%unique_vals  Determines unique field values of header cell
 
     % Store all the values in the field
     vals = {hdrs.(fld)};
@@ -445,12 +484,14 @@ function n = unique_vals(hdrs,fld)
     end
 
     % Get the number of unique values
-    n = numel( unique(vals) );
+    vals = unique(vals);
+    n    = numel(vals);
 
 end %unique_vals
 
-% Preps eDWI headers with a T2 image
+%--------------------------------------------
 function imgs = prepare_edwi_w_t2(imgs,fld,n)
+%prepare_edwi_w_t2  Prepares eDWI headers with a T2 image
 
     % Grab the headers from the image object
     hds = [imgs.metaData];

@@ -1,4 +1,4 @@
-function create_roi_Callback(hObj,eventdata)
+function create_roi_Callback(hObj,~)
 %create_roi_Callback  Callback for ROI creation requests
 %
 %   create_roi_Callback(H,EVENT)
@@ -62,28 +62,25 @@ function create_roi_Callback(hObj,eventdata)
     end
 
     % Initiate interactive session for placing the ROI
-    rType  = strrep( regexp(get(hObj,'Tag'),'_\w*_','match'), '_','' );
-    roiObj = qt_roi(obj.image,rType{1},'Tag',obj.roiTag);
+    rType    = strrep( regexp(get(hObj,'Tag'),'_\w*_','match'), '_','' );
+    rType{1} = strrep(rType{1},'freehand','spline'); %'freehand' is not valid - qt_roi
+    roiObj   = qt_roi(obj.image,rType{1},'Tag',obj.roiTag);
 
     if roiObj.validaterois
 
         % Store the new ROI name
         roiObj.name = roiNm;
 
-        % Add the PostSet listener to the updated QUATTRO ROI stats and store
-        % the new ROI object and index
+        % Add the post-set listener to update the QUATTRO ROI stats and store
+        % the new ROI object and index.
         fcn = @(src,event) update_roi_stats(src,event,hFig);
         addlistener(roiObj,'roiStats','PostSet',fcn);
-        obj.roiIdx.(obj.roiTag) = newIdx;
         obj.addroi(roiObj);
 
-        % Update the listbox status. By changing the listbox value, the PostSet
-        % event for the qt_roi property "imgVals" is fired, updating the stats
-        % display
-        hList = findobj(hFig,'Tag','listbox_rois');
-        set(hList,'Value',newIdx);
-        setappdata(hList,'currentvalue',newIdx);
-        update_order_context_menus(hList)
+        % Notify the "roiChanged" event to ensure all ROI UI tools are updated
+        % appropriately.
+        notify(obj,'roiChanged');
+        obj.roiIdx.(obj.roiTag) = newIdx;
 
     else
 
@@ -93,8 +90,5 @@ function create_roi_Callback(hObj,eventdata)
         end
 
     end
-
-    % UI controls with respect to the new ROIs
-    update_controls(hFig,'enable')
 
 end %create_roi_Callback

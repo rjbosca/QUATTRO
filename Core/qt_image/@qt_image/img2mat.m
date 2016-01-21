@@ -8,7 +8,7 @@ function y = img2mat(obj)
 
     %TODO: perform error checking on IDX
     % Get the requested images
-    y = {obj.image};
+    y = {obj.value};
 
     % Get the image size and convert the stack to an array
     m = size(y{1});

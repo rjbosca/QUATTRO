@@ -18,4 +18,4 @@ h    = dMat/(dMat'*dMat)*dMat'; %hat matrix
 r    = (y(:)-f(:)); %model residuals
 
 % Calculate the standardized residuals
-val  = r./sqrt( mean_sq_err(x,y,f).*(1-diag(h)) );
+val  = r./sqrt( modelmetrics.calcmse(x,y,f).*(1-diag(h)) );

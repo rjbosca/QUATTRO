@@ -1,4 +1,4 @@
-function open_file_Callback(hObj,eventdata)
+function open_file_Callback(hObj,~)
 %open_file_Callback  Callback for handling file opening requests
 %
 %   open_file_Callback(H,EVENT)
@@ -65,6 +65,10 @@ function open_file_Callback(hObj,eventdata)
 
     % Load the data
     qt_exam.load(obj,'',dataType);
+
+    %FIXME: this is a temporary measure to ensure that ROI tools are updated
+    %properly after loading a saved QUATTRO exam
+    notify(obj,'roiChanged');
 
     % Update UI controls
     %FIXME: how to handle the errMsg now that the above switch is used only for

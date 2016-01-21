@@ -40,7 +40,7 @@ function uitoggletool_data_cursor_state_postset(src,eventdata)
         % is disabled, only the ROIs of the current tag need to have the "state"
         % property set to 'off'
         if any(rois(:).validaterois)
-            [rois(:).state] = deal('off');
+            [rois(:).state] = deal('off'); %#ok - handle based object
         end
 
         % Disable the listbox, and enable the data cursor mode.
@@ -59,7 +59,7 @@ function uitoggletool_data_cursor_state_postset(src,eventdata)
         % Enable prviously disabled controls and ROIs
         set([hs.listbox_rois hs.popupmenu_roi_tag],'Enable','on');
         if any(rois(:).validaterois)
-            [rois(:).state] = deal('on'); %#ok<*NASGU>
+            [obj.roi.state] = deal('on');
         end
 
     end

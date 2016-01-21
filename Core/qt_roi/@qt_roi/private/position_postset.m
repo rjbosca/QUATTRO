@@ -1,5 +1,5 @@
-function position_postset(obj,src,eventdata)
-%position_postset  PostSet event for the qt_roi "position" property
+function position_postset(obj,~,~)
+%position_postset  Post-set event for QT_ROI "position" property
 %
 %   position_postset(OBJ,SRC,EVENT)
 

@@ -6,12 +6,12 @@ function addfilter(obj,varargin)
 %   array of qt_image objects. Before appending to the filter to the image
 %   pipeline, the filter F is tested for errors.
 %
-%   A note on usage: Because the filter is tested during each call to
+%   A note on usage: Because the filter is validated during each call to
 %   "addfilter" the validation becomes computationally expensive for large
 %   arrays of image objects (especially when utilizing the memory saver mode).
-%   For that reason, passing an array of objects is the preferred method for
+%   For that reason, passing an array of objects is the preferred method when
 %   calling "addfilter" because the filter is only tested on the first image in
-%   the array
+%   the array as all other images are assumed to be the same size
 
     % Catch multiple fliter inputs and re-evaluate the "addfilter" method using
     % cellfun (so it looks like there is only a single input)
@@ -23,12 +23,12 @@ function addfilter(obj,varargin)
 
     % Validate proper operation of the filter
     try
-        imTest = obj(1).image;
+        imTest = zeros(obj(1).dimSize);
         imTest = fcn(imTest);
     catch ME
         rethrow(ME)
     end
-    if any( size(imTest)~=obj(1).imageSize )
+    if any( size(imTest)~=obj(1).dimSize )
         error(['qt_image:' mfilename ':invalidFilter'],...
                'Image filters should not alter the image dimensions.');
     end

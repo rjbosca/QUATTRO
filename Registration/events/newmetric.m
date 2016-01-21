@@ -8,7 +8,7 @@ function newmetric(src,eventdata)
 
     % Validate the input string
     try
-        validatestring(obj.metric,{'mmi','ncc','mi'});
+%         validatestring(obj.metric,{'mmi','ncc','mi'});
     catch ME
         if strcmpi(ME.identifier,'MATLAB:unrecognizedStringChoice')
             warning(['qt_reg:' src.Name ':invalidDir'],'%s %s\n%s\n',...

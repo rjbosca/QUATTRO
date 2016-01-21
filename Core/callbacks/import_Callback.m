@@ -1,4 +1,4 @@
-function import_Callback(hObj,eventdata)
+function import_Callback(hObj,~)
 %import_Callback  QUATTRO callback for handling import menu requests
 %
 %   import_Callback(H,EVENT) callback for all import menus, where H is the menu
@@ -28,13 +28,16 @@ function import_Callback(hObj,eventdata)
 
             % Call a sub-routine to overwrite all data stroed currently in
             % QUATTRO
+            %FIXME: with the new way that QUATTRO is notified of changes to the
+            %"rois" property, none of the following code removes any of the ROI
+            %tools from the GUI when importing new data...
             overwrite_gui_data(hFig);
 
             % Hides all user controls and displays
             update_controls(hFig,'hide');
 
-            % Create a new qt_exam object and load all image data from a
-            % user-specified directory
+            % Create a new QT_EXAM object and load all image data from a user-
+            % specified directory
             obj = qt_exam(hFig);
             create_exam_events(obj);
             obj = obj.addexam('import','NewExam','auto');

@@ -2,24 +2,62 @@ function varargout = export(obj,varargin)
 %export  Exports image/metadata
 %
 %   [I,HDR] = export(OBJ) outputs the image I and associated meta-data HDR from
-%   the qt_image object OBJ.
+%   the QT_IMAGE object OBJ. For those image formats that do not support
+%   meta-data output, HDR will be an empty structure with no fields.
 %
-%   export(OBJ,FILE) exports the qt_image object OBJ to the file specified by
-%   FILE. Both the image data and meta-data are writtne to the file.
+%   [...] = export(OBJ,FILE) exports the QT_IMAGE object OBJ to the file
+%   specified by FILE. Both the image data and meta-data are writtne to the
+%   file.
 %
-%   NOTE ON EXPORT FORMAT: qt_image currently supports only DICOM image export.
-%   This will change in a future release.
+%   [...] = export(...,FORMAT) exports the QT_IMAGE object as described
+%   previously, using the image format specified by FORMAT.
+%
+%   NOTE ON EXPORT FORMAT: QT_IMAGE currently supports only DICOM and RAW image
+%   export. This will change in a future release.
 
-    % Validate and parse the input(s)
-    narginchk(1,2);
-    fileName = '';
-    if nargin>1
-        fileName = varargin{1};
+    % Special case for no requested output
+    if (nargin==1)
+        varargout = {obj.value,obj.metaData};
+        return
     end
 
+    % Parse the inputs
+    [fileName,outFormat] = parse_inputs(varargin{:});
+
+    % Perform the appropriate export operation
+    hdr = struct([]);
+    switch lower(outFormat)
+        case 'dicom'
+            [im,hdr] = write_dicom(obj,fileName);
+        case 'raw'
+            im       = write_raw(obj,fileName);
+        otherwise
+    end
+
+    % Deal the outputs if requested
+    if nargout
+        varargout = {im,hdr};
+    end
+
+end %qt_image.export
+
+
+%-----------------------------------------
+function [im,hdr] = write_dicom(obj,fName)
+
     % Grab the image and meta-data output
-    im  = double(obj.image);
+    im  = double(obj.value);
     hdr = obj.metaData;
+
+    % Test for INF values. Since these will destroy the scaling, replace them
+    % with NaNs and warn the user
+    if any( isinf(im(:)) )
+        im(isinf(im(:))) = NaN;
+        warning(['qt_image:' mfilename ':infDicomVoxel'],...
+                ['Infinite voxel values detected. DICOM export does not ',...
+                 'support infinte values. All INFs have been replaced with ',...
+                 'NaNs.']);
+    end
 
     % DICOM V3 supports encoding the pixel physical units in (0018,604C). The
     % following code uses the qt_image property "units" to determine the
@@ -49,27 +87,21 @@ function varargout = export(obj,varargin)
 %     end
 
     % Write the data
-    if (exist( fileparts(fileName), 'dir')==7)
+    if (exist( fileparts(fName), 'dir')==7)
 
-        % Determine the image min/max. These values will potentially be
-        % used later to modify image scaling and shifting. 
+        % Determine the image min/max. These values will potentially be used
+        % later to modify image scaling and shifting.
         imMinMax = [max(im(~isnan(im))) min(im(~isnan(im)))];
         if isempty(imMinMax) %the image is all NaNs
             imMinMax = [0 0];
         end
         imMaxRange = abs( diff(imMinMax) );
 
-        % Determine if NaN values exist and the maximum voxel range. When
-        % NaNs exist, map those voxels to the largest unsigned integer
-        % (65535) and use the "RealWorldValueLastValueMapped" DICOM tag to
-        % ignore those values on load. If necessary, the data can be
-        % rescaled to fit in the smaller space
-        isNan    = any( isnan(im(:)) );
-        maxRange = double( intmax('uint16') );
-        if isNan
-            hdr.RealWorldValueLastValueMapped = maxRange;
-            maxRange                          = maxRange-1;
-        end
+        % Initialize maximum range unsigned 16-bit integer range and the real
+        % world value header tags
+        maxRange                           = double( intmax('uint16') );
+        hdr.RealWorldValueLastValueMapped  = maxRange-1;
+        hdr.RealWorldValueFirstValueMapped = 1;
 
         % Initialize the default values for the rescaling slope and intercept;
         % these values perform an identity mapping. Determine if the data
@@ -82,11 +114,10 @@ function varargout = export(obj,varargin)
         isRescale            = any( round(im(~isnan(im)))~=im(~isnan(im)) );
         if (imMaxRange>maxRange) || isRescale %case (1) and (2)
                                     
-
             % Determine the intercept and slope necessary to map the floating
-            % point numbers to the maximum unsigned 16-bit integer range.
-            hdr.RescaleIntercept = imMinMax(2);
+            % point voxel values to the interval [1 65535].
             hdr.RescaleSlope     = imMaxRange/maxRange;
+            hdr.RescaleIntercept = imMinMax(2)-hdr.RescaleSlope;
 
         elseif imMinMax(2)<0 %case (3) - negative values only
             hdr.RescaleIntercept = imMinMax(2);
@@ -98,7 +129,7 @@ function varargout = export(obj,varargin)
 
         % Write the data
         %TODO: program support for more than just DICOM...
-        dicomwrite(im,fileName,hdr,'WritePrivate',true,'CreateMode','copy');
+        dicomwrite(im,fName,hdr,'WritePrivate',true,'CreateMode','copy');
 
     else
 %FIXME: this code is a temporary solution to the problem of storing the image
@@ -106,9 +137,53 @@ function varargout = export(obj,varargin)
         hdr.Units = obj.units;
     end
 
-    % Deal the outputs if requested
-    if nargout
-        varargout = {im,hdr};
+end %write_dicom
+
+%---------------------------------
+function im = write_raw(obj,fName)
+
+    % Grab the image output and open the file for writing
+    im  = double(obj.value);
+    fid = fopen(fName,'w+','l'); %always write as little endian
+
+    % Write the image and close the file stream
+    fwrite(fid,im,'double');
+    fclose(fid);
+
+end %write_raw
+
+
+%------------------------------------------
+function varargout = parse_inputs(varargin)
+
+    % Validate the number of inputs
+    try
+        narginchk(1,2);
+    catch ME
+        throwAsCaller(ME);
     end
 
-end %qt_image.export
+    % Set up the input parser
+    parser = inputParser;
+    parser.addOptional('file','',@(x) ischar(x) && (exist(fileparts(x),'dir')));
+    parser.addOptional('format','dicom',@ischar);
+
+    % Parse the inputs
+    parser.parse(varargin{:});
+    results = parser.Results;
+
+    % Perform some additional validation on the image format
+    results.format = validatestring(results.format,{'dicom','raw'});
+
+    % Ensure that the file can be opened for reading
+    try
+        fid = fopen(results.file,'w');
+        fclose(fid);
+    catch ME
+        rethrow(ME);
+    end
+
+    % Deal the outputs
+    varargout = struct2cell(results);
+
+end %parse_inputs

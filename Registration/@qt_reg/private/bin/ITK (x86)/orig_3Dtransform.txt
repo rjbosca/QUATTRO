@@ -1,3 +1,0 @@
-All rotations are given in units of degrees, all translations/offsets
-	Iter	xrot	yrot	zrot	x	y	z
-	#	(deg)	(deg)	(deg)	(mm)	(mm)	(mm)

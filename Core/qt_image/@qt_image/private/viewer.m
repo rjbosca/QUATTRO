@@ -54,7 +54,7 @@ function hAx = viewer(obj)
 
 
     % Set figure title and callbacks
-    [fPath,fName] = fileparts(obj(1).fileName); %#ok
+    [~,fName] = fileparts(obj(1).fileName{1});
     set(hFig,'Name',fName,...
              'NumberTitle','off',...
              'WindowButtonMotionFcn',@image_button_motion_fcn,...
@@ -122,7 +122,7 @@ function slider_Callback(hObj,eventdata) %#ok
     obj(valSl,valSe).show( getappdata(hFig,'qtImgObject') );
 
     % Update the figure title and app data
-    [~,fName] = fileparts(obj(valSl,valSe).fileName);
+    [~,fName] = fileparts(obj(valSl,valSe).fileName{1});
     set(hFig,'Name',fName);
     setappdata(hObj,'currentvalue',val);
 

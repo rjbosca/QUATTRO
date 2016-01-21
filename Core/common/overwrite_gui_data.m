@@ -5,12 +5,17 @@ function overwrite_gui_data(hFig)
 %   by the handle H. This includes resetting all QUATTRO UI controls and
 %   deleting the current qt_exam objects.
 
-    % Get handles and the full QUATTRO workspace qt_exam object
-    hs  = guihandles(hFig);
-    obj = getappdata(hFig,'qtWorkspace');
+    % Get handles and the full QUATTRO workspace QT_EXAM object. All objects
+    % from the same QUATTRO instance store the current exam selection in the
+    % "examIdx" property. Since the "if" statements below will only work for a
+    % scalar exam object, use only the current object to validate various
+    % properties
+    hs     = guihandles(hFig);
+    obj    = getappdata(hFig,'qtWorkspace');
+    curObj = obj( obj(1).examIdx );
 
-    % Only proceed with the overwrite operation if a valid qt_exam object exists
-    if ~isempty(obj) && obj.exists.any
+    % Only proceed with the overwrite operation if a valid QT_EXAM object exists
+    if ~isempty(curObj) && curObj.exists.any
 
         % Sets initial values and app data for UI controls
         set_ui_current_value(hFig);
@@ -27,7 +32,7 @@ function overwrite_gui_data(hFig)
         guidata(hFig,guihandles(hFig));
 
         % Delete all current exam objects
-        obj.delete;
+        obj(obj.isvalid).delete;
 
     end
 

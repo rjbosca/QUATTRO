@@ -2,18 +2,18 @@ function hFig = qimtool(obj)
 %qimtool  Creates a quantitative image modeling (QIM) GUI
 %
 %   H = qimtool(OBJ) creates an interactive GUI that allows the user to
-%   interactively navigate data and fitted models stored in one of the qt_models
-%   sub-class objects specified by OBJ. The figure handle, H, is returned.
+%   interactively navigate data and fitted models stored in one of the modeling
+%   objects specified by OBJ. The figure handle, H, is returned.
 %
-%   If a qt_exam object is registered with an instance of the QUATTRO GUI, the
+%   If a QT_EXAM object is registered with an instance of the QUATTRO GUI, the
 %   UI tools of qimtool will reflect additional options for selecting data
 %
 %   See also qt_models.qt_models and qt_exam.qt_exam
 
     % Verify caller
-    modelType = class(obj);
-    if ~nargin || (~strcmpi(modelType,'qt_models') &&...
-                                 ~any( strcmpi('qt_models',superclasses(obj)) ))
+    mType = class(obj);
+    if ~nargin || (~strcmpi(mType,'qt_models') &&...
+                                 ~any( strcmpi('modelbase',superclasses(obj)) ))
         error(['QUATTRO:' mfilename ':guiConstructorChk'],...
                              'Invalid call to GUI constructor. See qt_models.');
     elseif numel(size(obj.y))>2
@@ -21,21 +21,9 @@ function hFig = qimtool(obj)
                    'qt_models GUI is not available for multidimensional data.');
     end
 
-    % Determine if a qt_exam object is attached
-    hQt  = [];
-    isQt = false;
-    if ~isempty(obj.hExam) && isvalid(obj.hExam)
-        hQt  = obj.hExam.hFig;
-        isQt = ~isempty(hQt) && ishandle(hQt) &&...
-                                                strcmp(get(hQt,'Name'),qt_name);
-    end
-
-    % Prepare figure properties and determine new figure position based on
-    % QUATTRO's position if possible
+    % Initialize the position vector and background color
     figPos = [644 454 600 470];
-
-    % Color setup
-    bkg = [93 93 93]/255;
+    bkg    = 93/255*ones(1,3);
 
     % Prepare main figure
     hFig = figure('CloseRequestFcn',                @delete_models_fig,...
@@ -93,22 +81,24 @@ function hFig = qimtool(obj)
                    'Visible','on');
     hAx  =    axes('Parent',hFig,...
                    'Color',[1 1 1],...
+                   'NextPlot','add',...
                    'Position',[60 150 512 288],...
-                   'Tag','axes_main',...
-                   'XTickLabel','',...
-                   'YTickLabel','');
+                   'Tag','axes_main');
 
     % Prepare QUATTRO specific tools
-    modelList = obj.modelNames;
+    mPkg  = meta.class.fromName(mType).ContainingPackage;
+    mPkg  = strrep(mPkg.Name,[mPkg.ContainingPackage.Name '.'],'');
+    mVal  = qt_models.model2val(mType);
+    mList = qt_models.package2models(mPkg);
 
     % Prepare universal tools
     uicontrol('Parent',hPan,...
-              'Callback',@change_fit_Callback,...
+              'Callback',@change_model_Callback,...
               'Position',[412 10 90 20],...
-              'String',modelList,...
+              'String',mList,...
               'Style','PopupMenu',...
               'Tag','popupmenu_model',...
-              'Value',obj.modelVal);
+              'Value',mVal);
     uicontrol('Parent',hPan,...
               'Callback',@change_fit_Callback,...
               'Position',[412 50 90 20],...
@@ -221,36 +211,31 @@ function hFig = qimtool(obj)
               'Tag','text_roi',...
               'Visible','off');
 
-    % Initialize/prepare the model UI panels
-    if ~strcmpi(modelType,'generic')
+    % Register the "external" modeling figure with the modeling object so that
+    % the figure can be updated when changes to the modeling object are made
+    obj.register(hFig);
+
+    % Initialize/prepare the model UI panels for those models that have a
+    % defined parameterized model (i.e., not "generic")
+    if ~strcmpi(mType,'generic')
 
         % Widen the figure to prepare for the additional tools
         figPos = figPos+[0 0 290 0]; %used later in the "isQt" section
         set(hFig,'Position',figPos);
 
-        % Generate the panel
-        paramOptsPos = [592 240 260 178];
-        resultsPos   = [592  10 260 200];
-
-        % Create the headers
-        uicontrol('Parent',hFig,...
-                  'BackgroundColor',bkg,...
-                  'FontSize',10,...
-                  'ForegroundColor',[1 1 1],...
-                  'HorizontalAlignment','Left',...
-                  'Position',[592 418 150 20],...
-                  'String','Parameter Options',...
-                  'Style','Text',...
-                  'Tag','text_parameter_options');
-        uicontrol('Parent',hFig,...
-                  'BackgroundColor',bkg,...
-                  'FontSize',10,...
-                  'ForegroundColor',[1 1 1],...
-                  'HorizontalAlignment','Left',...
-                  'Position',[592 210 150 20],...
-                  'String','Fitting Results',...
-                  'Style','Text',...
-                  'Tag','text_fitting_results');
+        % Create the UI panels that will house the tables
+        hUip(1) = uipanel('Parent',hFig,...
+                          'FontSize',10,...
+                          'Position',[587 240 270 203],...
+                          'Tag','uipanel_parameter_options',...
+                          'Title','Parameter Options',...
+                          'Visible','on');
+        hUip(2) = uipanel('Parent',hFig,...
+                          'FontSize',10,...
+                          'Position',[587 10 270 225],...
+                          'Tag','uipanel_results',...
+                          'Title','Fitting Results',...
+                          'Visible','on');
 
         % Prepare UI context menus for the parameter options table
         hCmenu = uicontextmenu;
@@ -259,56 +244,45 @@ function hFig = qimtool(obj)
                'Label','Copy to Clipboard',...
                'Tag','context_copy_to_clipboard');
 
-        % Create a table
-        n = numel(obj.guess);
-        uitable('Parent',hFig,...
+        % Create the tables for displaying results and editting fitting options
+        uitable('Parent',hUip(1),...
                 'CellEditCallback',@table_parameter_options_Callback,...
-                'ColumnEditable',true(1,4),...
-                'ColumnFormat',{'short g','short','short','logical'},...
-                'ColumnName',{'Guess','Lower','Upper','Enabled'},...
-                'ColumnWidth',{50 50 50 'auto'},...
-                'Data',[num2cell([obj.guess(:) obj.bounds]) num2cell(true(n,1))],...
+                'ColumnEditable',[obj.autoGuess true(1,2)],...
+                'ColumnFormat',{'short g','short','short'},...
+                'ColumnName',{'Guess','Lower','Upper'},...
+                'ColumnWidth',{50 50 50},...
+                'Data',qt_models.objparams2cell(obj),...
                 'FontSize',10,...
-                'RowName',obj.nlinParams{obj.modelVal},...
-                'Position',paramOptsPos,...
+                'RowName',obj.nlinParams,...
+                'Position',[5 30 260 153],...
                 'Tag','table_parameter_options');
-        uitable('Parent',hFig,...
+        uitable('Parent',hUip(2),...
                 'ColumnEditable',false,...
                 'ColumnFormat',{'char','short g','char'},...
                 'ColumnName',{'Parameter','Value','Units'},...
                 'ColumnWidth',{'auto',75,75},...
                 'FontSize',10,...
                 'RowName',[],...
-                'Position',resultsPos,....
+                'Position',[5 5 260 200],....
                 'Tag','table_results',...
                 'uicontextmenu',hCmenu);
 
+        % Create the checkbox for setting the automatic estimate feature
+        uicontrol('Parent',hUip(1),...
+                  'BackgroundColor',bkg,...
+                  'Callback',@change_auto_guess_Callback,...
+                  'FontSize',10,...
+                  'ForegroundColor',[1 1 1],...
+                  'Position',[5 5 125 20],...
+                  'String','Auto-Guess',...
+                  'Style','Checkbox',...
+                  'Tag','checkbox_auto_guess',...
+                  'Value',obj.autoGuess);
+
     end
 
-    % Perform exam specific GUI modifications
-    if strcmpi(modelType,'multiti') && obj.restoreInv
-        set( findobj('Tag','context_invert_signal'), 'Visible','on');
-    end
-
-    % Create some PostSet listeners for the modeling object. To avoid these
-    % event listeners piling up in the modeling object, the handle to the
-    % listener should be cached in the application data and deleted when the
-    % figure is terminated. Currently, the modeling object is deleted upon
-    % deletion of the GUI, during which time these listeners are deleted. Future
-    % developments may require a more robust alternative.
-    addlistener(obj,'bounds',   'PostSet',@qim_update_options);
-    addlistener(obj,'guess',    'PostSet',@qim_update_options);
-    addlistener(obj,'autoGuess','PostSet',@qim_update_options);
-    addlistener(obj,'results',  'PostSet',@qim_update_results);
-
-    % Cache the models object and the data mode (used to determine how to grab
-    % data from qt_exam)
-    setappdata(hFig,'modelsObject',obj);
-    setappdata(hFig,'dataMode','none');
-
-    % Register the "external" modeling figure with the modeling object so that
-    % the figure can be updated when changes to the modeling object are made
-    obj.register(hFig);
+    % Add listeners to the modeling object and append to the application data
+    create_model_object_listeners(obj);
 
     % Create some figure menus. This most be done after registering the figure
     % handle to the modeling object because that task sets the necessary
@@ -318,7 +292,7 @@ function hFig = qimtool(obj)
     % Grab the handles structure
     hs = guihandles(hFig);
 
-    % Create some PostSet listeners for the QIM tool's UI tools
+    % Create some post-pet listeners for the QIM tool's UI tools
     addlistener(hs.edit_slice,   'String','PostSet',@qim_selection_postset);
     addlistener(hs.edit_series,  'String','PostSet',@qim_selection_postset);
     addlistener(hs.popupmenu_roi,'Value', 'PostSet',@qim_selection_postset);
@@ -326,65 +300,53 @@ function hFig = qimtool(obj)
     % All tools have been initialized at this point. Update the application data
     set_ui_current_value(hFig);
 
-    % Perform QUATTRO specific preparations
-    if isQt
-
-        % Set the figure position so it coincides with the main QUATTRO GUI
-        qtPos = get(hQt,'Position');
-        set(hFig,'Position',[qtPos(1:2) figPos(3:4)])
-
-        % Create some PostSet listeners that update the ROI information of the
-        % modeling GUI following changes to the ROI listbox strings
-        hList = findobj(obj.hExam.hFig,'Tag','listbox_rois');
-        lhs   = addlistener(hList,'String','PostSet',...
-                                              @qim_listbox_rois_string_postset);
-
-        % Update the data mode pop-up menu and model pop-up menu to reflect the
-        % data available from the main QUATTRO GUI. Also, prepare the the ROI
-        % selection pop-up menu if data are available
-        hQtRoi = findobj(hQt,'Tag','listbox_rois');
-        if obj.hExam.exists.rois.roi
-            set(hs.popupmenu_data,'String',...
-                           {'','Cur. Pixel','Cur. ROI Proj.','Cur. ROI','VOI'});
-            roiIdx = get(hQtRoi,   'Value');
-            set(hs.popupmenu_roi,'Value',roiIdx(1));
-        else
-            set(hs.popupmenu_data,'String',{'','Cur. Pixel'});
-        end
-
-        % By default, the modeling GUI is linked to QUATTRO. Update the slice
-        % and series locations now
-        hQtSlice   = findobj(hQt,'Tag','slider_slice');
-        hQtSeries  = findobj(hQt,'Tag','slider_series');
-        lhs(end+1) = addlistener(hQtSlice, 'Value','PostSet',...
-                                               @qim_slider_slice_value_postset);
-        lhs(end+1) = addlistener(hQtSeries,'Value','PostSet',...
-                                              @qim_slider_series_value_postset);
-        lhs(end+1) = addlistener(hQtRoi,   'Value','PostSet',...
-                                               @qim_listbox_rois_value_postset);
-        sliceIdx   = get(hQtSlice, 'Value');
-        seriesIdx  = get(hQtSeries,'Value');
-        set(hs.edit_slice,   'String',num2str(sliceIdx));
-        set(hs.edit_series,  'String',num2str(seriesIdx));
-
-        % Store the listeners in the application to data to ensure that they are
-        % deleted when the GUI is terminated
-        setappdata(hFig,'listeners',lhs);
-
-    end
-
     % Fire the qim_update_results event to ensure that the current results are
-    % displayed properly in the GUI
+    % displayed properly in the GUI if they already exist
     if ~isempty(obj.results)
-        qim_update_results([],struct('AffectedObject',obj));
+        notify(obj,'showModel');
     end
+
+    % Update the handles structure
+    guidata(hFig,hs);
 
 end %qimtool
 
 
 %-----------------------Callback/Ancillary Functions----------------------------
 
-function button_down_Callback(hObj,eventdata)
+%------------------------------------------
+function create_model_object_listeners(obj)
+
+    % Create some post-set and event listeners for the modeling object. To avoid
+    % these event listeners piling up in the modeling object, the handle to the
+    % listener should be cached in the application data and deleted when the
+    % figure is terminated. Currently, the modeling object is deleted upon
+    % deletion of the GUI, during which time these listeners are deleted. Future
+    % developments may require a more robust alternative.
+    eLhs = [getappdata(obj.hFig,'eventListeners')
+            addlistener(obj,'showModel',            @qim_update_results)
+            addlistener(obj,'updateModel',          @qim_update_options)];
+    pLhs = [getappdata(obj.hFig,'propListeners')
+            addlistener(obj,'autoGuess','PostSet',@qim_autoGuess_postset)];
+
+    % Update the application data
+    setappdata(obj.hFig,'eventListeners',eLhs);
+    setappdata(obj.hFig,'propListeners', pLhs);
+
+end %create_model_object_listeners
+
+%------------------------------------------
+function change_auto_guess_Callback(hObj,~)
+
+    % Update the modeling object's "autoGuess" property. The post-set listeners
+    % will take care of the rest
+    obj           = getappdata(gcbf,'modelsObject');
+    obj.autoGuess = logical( get(hObj,'Value') );
+
+end %change_auto_guess_Callback
+
+%------------------------------------
+function button_down_Callback(hObj,~)
 
     % Don't do anything unless RMB was pressed
     if ~strcmpi( get(hObj,'SelectionType'), 'alt' )
@@ -411,28 +373,24 @@ function button_down_Callback(hObj,eventdata)
 
 end %button_down_Callback
 
-function change_data_Callback(hObj,eventdata)
+%------------------------------------
+function change_data_Callback(hObj,~)
 
     % Determine if selection has changed
-    val = get(hObj,'Value');
-    if val==getappdata(hObj,'currentvalue')
+    if qt_abort_set(hObj,'Value')
         return
     end
 
     % Get the modeling and QUATTRO figure handles, modeling object, and the
     % current data mode
-    hFig     = guifigure(hObj);
+    hFig     = gcbf;
+    hs       = guidata(hFig);
     obj      = getappdata(hFig,'modelsObject');
-    hQt      = getappdata(hFig,'linkedfigure');
 
     % Find UI control handles and update app data
-    hRoi  = [findobj(hFig,'Tag','popupmenu_roi')...
-             findobj(hFig,'Tag','text_roi')];
-    hPos  = [findobj(hFig,'Tag','text_slice')...
-             findobj(hFig,'Tag','edit_slice')...
-             findobj(hFig,'Tag','text_series')...
-             findobj(hFig,'Tag','edit_series')];
-    setappdata(hObj,'currentvalue',val);
+    hRoi  = [hs.popupmenu_roi hs.text_roi];
+    hPos  = [hs.text_slice hs.edit_slice hs.text_series hs.edit_series];
+    setappdata(hObj,'currentvalue',get(hObj,'Value'));
 
     % Determine what change has been made
     switch getPopupMenu(hObj)
@@ -440,10 +398,9 @@ function change_data_Callback(hObj,eventdata)
             % Grab the exam object so the ROI names can be determined and
             % update the appropriate controls
             set([hRoi(:);hPos(:)],'Visible','on');
-            set(hRoi(1),'String',obj.hExam.roiNames.roi);
 
             % Define the data mode
-            dataMode = 'project';
+            obj.dataMode = 'project';
         case 'Cur. ROI'
             %TODO: write code to validate that the ROI in question is
             %available on all series points (better yet, only populate the
@@ -459,39 +416,18 @@ function change_data_Callback(hObj,eventdata)
             setappdata(hObj,'currentvalue',1);
             return
         case 'Cur. Pixel'
-            hCur = findall(hQt,'Tag','uitoggletool_data_cursor');
-            if strcmpi( get(hCur,'State'), 'off' )
-                set(hCur,'State','on'); %initialize the state, which fires the
-                                        %"state" PostSet event
-            end
-
             % Hide the ROI tools on the modeling GUI
             set(hRoi,'Visible','off');
-
-            % Store the mode
-            dataMode = 'pixel';
+            obj.dataMode = 'pixel';
         otherwise
             set([hRoi(:);hPos(:)],'Visible','off');
-            dataMode = 'none';
-    end
-
-    % Update the application data so listeners know how to pass data along
-    % to the GUI (and modeling object)
-    setappdata(hFig,'dataMode',dataMode);
-
-    % Update the modeling object y data
-    if ~strcmpi(dataMode,'none')
-        exObj = getappdata(hFig,'qtExamObject');
-        obj.y = exObj.getroivals(dataMode,@mean,true,...
-                                 'slice', str2double( get(hPos(2),'String') ),...
-                                 'series',str2double( get(hPos(4),'String') ),...
-                                 'roi',   get(hRoi(1),'Value'),...
-                                 'tag',   'roi');
+            obj.dataMode = 'manual';
     end
 
 end %change_data_Callback
 
-function change_loc_Callback(hObj,eventdata)
+%-----------------------------------
+function change_loc_Callback(hObj,~)
 
     % Determine if the selection was changed
     uiStyle = get(hObj,'Style');
@@ -524,30 +460,27 @@ function change_loc_Callback(hObj,eventdata)
 
 end %change_loc_Callback
 
-function change_fit_Callback(hObj,eventdata)
+%-----------------------------------
+function change_fit_Callback(hObj,~)
 
     % Get and update current value
     val = get(hObj,'Value');
-    if val==getappdata(hObj,'currentvalue')
+    if (val==getappdata(hObj,'currentvalue'))
         return
     end
 
     % Store model value if needed
-    obj = getappdata( guifigure(hObj), 'modelsObject' );
-    if strcmpi(get(hObj,'Tag'),'popupmenu_model')
-        obj.modelVal = val;
-    elseif strcmpi(get(hObj,'Tag'),'popupmenu_fit_type')
-        switch val
-            case 1
-                obj.algorithm = 'levenberg-marquardt';
-            case 2
-                obj.algorithm = 'robust';
-            case 3
-                obj.algorithm = 'trust-region-reflective';
-            case 4
-                warndlg('GP is a work in progress...');
-                set(hObj,'Value',getappdata(hObj,'currentvalue'));
-        end
+    obj = getappdata(gcbf,'modelsObject');
+    switch val
+        case 1
+            obj.algorithm = 'levenberg-marquardt';
+        case 2
+            obj.algorithm = 'robust';
+        case 3
+            obj.algorithm = 'trust-region-reflective';
+        case 4
+            warndlg('GP is a work in progress...');
+            set(hObj,'Value',getappdata(hObj,'currentvalue'));
     end
 
     % Update new current value
@@ -555,7 +488,55 @@ function change_fit_Callback(hObj,eventdata)
 
 end %change_fit_Callback
 
-function copy_params_Callback(hObj,eventdata)
+%-------------------------------------
+function change_model_Callback(hObj,~)
+
+    % Get and update current value
+    val = get(hObj,'Value');
+    if (val==getappdata(hObj,'currentvalue'))
+        return
+    end
+
+    % Get the handles structure and some additional application data
+    hs      = guidata(hObj);
+    appData = getappdata(hs.figure_main);
+
+    % Create a new modeling object from the old modeling object
+    mClass  = class(appData.modelsObject);
+    mPkg    = meta.class.fromName(mClass).ContainingPackage;
+    newObj  = eval( mPkg.ClassList(val).Name );
+
+    % Clone the old object's values and destroy the previous object
+    newObj  = appData.modelsObject.clone(newObj,'exclude',...
+                           {'autoFit','paramGuess','paramBounds','paramUnits'});
+    appData.modelsObject.delete;
+
+    % Copy the "y" property from the previous object and store in the qt_exam
+    % object to ensure that updates are handled properly
+    newObj.register(hs.figure_main);
+    appData.qtExamObject.addmodel(newObj);
+
+    % Add the listeners that update the modeling GUI
+    create_model_object_listeners(newObj);
+
+    % Fire the qim_update_results event to ensure that the current results are
+    % displayed properly in the GUI if they already exist
+    if ~isempty(newObj.results)
+        notify(newObj,'showModel');
+    end
+
+    % Update the row names for the parameter table
+    set(hs.table_parameter_options,'Data',qt_models.objparams2cell(newObj),...
+                                   'RowName',newObj.nlinParams);
+
+    % Update the application data
+    setappdata(hs.figure_main,'modelsObject',newObj);
+    setappdata(hObj,'currentvalue',val);
+
+end %change_model_Callback
+
+%------------------------------------
+function copy_params_Callback(hObj,~)
 
     % Find the results table
     hTable = findobj( guifigure(hObj), 'Tag', 'table_results' );
@@ -582,6 +563,7 @@ function copy_params_Callback(hObj,eventdata)
 
 end %copy_params_Callback
 
+%------------------------------------------
 function key_press_Callback(hObj,eventdata)
 
     % Determine action
@@ -597,29 +579,8 @@ function key_press_Callback(hObj,eventdata)
 
 end %key_press_Callback
 
-function invert_data_Callback(hObj,eventdata)
-
-    obj = getappdata( guifigure(hObj), 'modelsObject' );
-    if isempty(obj.yProc)
-        return
-    end
-
-    % Get the last point clicked
-    curPt = get( get(gco,'Parent'), 'CurrentPoint' );
-
-    % Calculate closest point
-    if ~isempty(obj.yProc)
-        d = sqrt( (obj.x-curPt(1,1)).^2 + (obj.yProc-curPt(1,2)).^2 );
-    else
-        d = sqrt( (obj.x-curPt(1,1)).^2 + (obj.y-curPt(1,2)).^2 );
-    end
-
-    % Invert, fit, and show new data
-    obj.yProc((d==min(d))) = -obj.yProc(d==min(d));
-
-end %invert_data_Callback
-
-function select_data_Callback(hObj,eventdata)
+%------------------------------------
+function select_data_Callback(hObj,~)
 
     % Get figure handle and modeling object
     hFig = guifigure(hObj);
@@ -660,16 +621,26 @@ function select_data_Callback(hObj,eventdata)
                 str = 'TE';
         end
 
+        % Convert numeric data to string data for the list dialog
+        xStr = arrayfun(@num2str,obj.x,'UniformOutput',false);
+
         % Get user input
-        [ind,ok] = cine_dlgs('multi_param_select',str,obj.x);
+        [sel,ok] = listdlg('InitialValue',find(obj.subset),...
+                           'ListString',xStr,...
+                           'Name',[str ' selection'],...
+                           'PromptString',['Select ' str ' to use:'],...
+                           'SelectionMode','multiple');
         if ok
-            obj.subset = ind;
+            newSub      = false(size(obj.subset));
+            newSub(sel) = true;
+            obj.subset  = newSub;
         end
     end
 
 end %select_data_Callback
-        
-function set_axes_limits_Callback(hObj,eventdata) %#ok<*INUSL,*INUSD>
+
+%----------------------------------------
+function set_axes_limits_Callback(hObj,~)
 
     % Find the axis
     hAx = findobj( guifigure(hObj), 'Tag', 'axes_main' );
@@ -691,6 +662,7 @@ function set_axes_limits_Callback(hObj,eventdata) %#ok<*INUSL,*INUSD>
 
 end %set_axes_limits_Callback
 
+%--------------------------------------------------------
 function table_parameter_options_Callback(hObj,eventdata)
 
     % Grab the data
@@ -705,52 +677,42 @@ function table_parameter_options_Callback(hObj,eventdata)
     end
 
     % Get the modeling object
-    obj = getappdata( guifigure(hObj), 'modelsObject' );
+    obj   = getappdata( guifigure(hObj), 'modelsObject' );
+    param = obj.nlinParams{inds(1)};
 
     % There are a few cases to handle here: (1) one of the guess values have
-    % been changed - disable autoGuess and re-fit, (2) one of the bounds have
-    % been changed - if the results are within the bounds do nothing, otherwise
-    % re-fit. The PostSet property events of the qt_models object perform
-    % validation on the values (bounds and guess), and the PostSet events
-    % attached by qimtool updates the table accordingly.
-    if inds(2)==1 %new guess
-        obj.guess = cell2mat(data(:,1));
-    elseif any(inds(2)==2:3) %new bounds
-        obj.bounds(inds(1),inds(2)-1) = eventdata.NewData;
-    else %enable/disable parameter
-        %TODO: since most of the testing of this feature were performed using
-        %VFA relaxometry techniques (i.e., there were two parameters that are
-        %always estimated), the code here needs to be designed and tested with
-        %more complex models that have parameters that can be enabled/disabled
+    % been changed - disable autoGuess and re-fit, (2) one of the parameter
+    % bounds has been changed - if the results are within the bounds do nothing,
+    % otherwise re-fit. The PostSet property events of the qt_models object
+    % perform validation on the values (bounds and guess), and the PostSet
+    % events attached by qimtool updates the table accordingly.
+    if (inds(2)==1) %new guess
+        obj.paramGuess.(param)             = eventdata.NewData;
+    else %new parameter bounds
+        obj.paramBounds.(param)(inds(2)-1) = eventdata.NewData;
     end
     
 end %table_parameter_options_Callback
 
-function delete_models_fig(hObj,eventdata)
+%---------------------------------
+function delete_models_fig(hObj,~)
 
     % Get the figure handle
-    hFig = guifigure(hObj);
-    hQt  = getappdata(hFig,'linkedfigure');
+    hFig = gcbf;
 
-    % Grab the models object and delete if possible
+    % When working with QUATTRO, the modeling object should be deleted during
+    % calls to the figure's CloseRequestFcn
+    %FIXME: when using a stand-alone modeling object, the user will likely be
+    %upset if the object is destroyed along with the GUI
     obj = getappdata(hFig,'modelsObject');
     if ~isempty(obj) && obj.isvalid
         obj.delete;
     end
 
-    % Recycle the recently removed models object
-    if ~isempty(hQt) && ishandle(hQt)
-        qtObjs = getappdata(hQt,'modelsObject');
-        qtObjs = qtObjs( qtObjs.isvalid );
-        setappdata(hQt,'modelsObject',qtObjs);
-    end
-
     % Various listeners might be cached (QUATTRO links only). These must be
     % deleted to avoid wasting computation
-    lhs = getappdata(hFig, 'listeners');
-    if ~isempty(lhs)
-        delete(lhs);
-    end
+    delete( getappdata(hFig,'propListeners') );
+    delete( getappdata(hFig,'eventListeners') );
 
     % Delete the figure
     delete(hObj);

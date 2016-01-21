@@ -35,15 +35,19 @@ function load(obj)
     end
 
     % Verify options structure
-    flds      = fieldnames(newOpts);
-    flds      = flds( ~strcmpi('examType',flds) );
-    validErrs = {'MATLAB:class:InvalidProperty'};
-    for idx = 1:length(flds)
+    flds      = fieldnames(newOpts)';
+    for fld = flds
         try
-            obj.set(flds{idx},newOpts.(flds{idx}));
+            obj.(fld{1}) = newOpts.(fld{1});
         catch ME
-            if ~any(strcmpi(ME.identifier,validErrs))
-                rethrow(ME)
+            switch ME.identifier
+                case {'MATLAB:noPublicFieldForClass'
+                      'MATLAB:class:InvalidProperty'}
+                    warning(['qt_options:' mfilename ':invalidConfigOption'],...
+                            ['"%s" is an invalid option or is inaccessible ',...
+                             'to the user.'],fld{1});
+                otherwise
+                    rethrow(ME)
             end
         end
     end

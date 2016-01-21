@@ -4,12 +4,12 @@ function update_menu_scripts(hQt)
 %   update_menu_scripts(H) updates the "Scripts" menu of the QUATTRO figure
 %   specified by the handle H.
 
-    % Get the qt_optoins object and the QUATTRO handles structure
+    % Get the qt_options object and the QUATTRO handles structure
     obj = getappdata(hQt,'qtOptsObject');
     hs  = guihandles(hQt);
 
     % Read all m-files in the scripts directory
-    fList = parse_dir_files(obj.scptDir,'m');
+    fList = gendirfiles(obj.scptDir,'m');
 
     % Find the static menus
     hStatic = [hs.import_script
@@ -31,16 +31,16 @@ function update_menu_scripts(hQt)
         [~,fName] = fileparts(file{1});
 
         % Determine which file MATLAB calls when attempting to evaluate the
-        % QUATTRO script. Notify the user of conflicts
+        % QUATTRO script. Notify the user of conflicts, but otherwise, allow the
+        % script to be run.
         matFile = which(fName);
-        if ~strcmpi(matFile,file{1})
+        if ~isempty(matFile) & ~strcmpi(matFile,file{1})
             warning(['QUATTRO:' mfilename ':mFileConflict'],...
                     ['The script "%s" conflicts with another script on MATLAB''s ',...
                      'search path - "%s". ',...
-                     'This QUATTRO script cannot be run until the conflict is ',...
-                     'resolved by either renaming the QUATTRO script or removing ',...
-                     'the other m-file from MATLAB''s path.\n'],file{1},matFile);
-            continue
+                     'The latter will be used until removed from the search ',...
+                     'path. Please resolve this conflict to ensure that the ',...
+                     'proper script is being run.\n'],file{1},matFile);
         end
 
         % Evaluating the script with no inputs should return the script name, if

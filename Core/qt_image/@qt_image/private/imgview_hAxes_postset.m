@@ -14,14 +14,14 @@ function imgview_hAxes_postset(obj,src,eventdata)
     % Get the image view object, the actual image data, size of the image, and
     % determine if the image data represent RGB values
     viewObj = eventdata.AffectedObject;
-    img     = obj.image;
+    img     = obj.value;
     m       = size(img);
     isRGB   = (numel(m)>2) && any(m(3:end)>1);
     if (prod(m)==0)
         return
     end
 
-    % Get the image limits
+    % Get the image color limits
     switch obj.wwwlMode
         case 'axis'
             clims = get(viewObj.hAxes,'CLim');
@@ -29,7 +29,7 @@ function imgview_hAxes_postset(obj,src,eventdata)
             ww    = mean( img( img~=0 & ~isnan(img) & ~isinf(img) ) );
             clims = (ww*[0 1]);
         case 'internal'
-            clims = [-1 1] .* ([-obj.wl obj.wl]+obj.ww/2);
+            clims = obj.wl + obj.ww/2*[-1 1];
     end
 
     % Perform real color conversion if requested and if the image is not already
@@ -56,8 +56,9 @@ function imgview_hAxes_postset(obj,src,eventdata)
     hPan  = pan(hFig);
     hZoom = zoom(hFig);
 
-    % Determine if an image of the same type already exists. Nominally, this
-    % syntax allows
+    % Determine if an image of the same type already exists. This method of
+    % updating the 'CData' in lieu of re-showing image data on the same axis
+    % provides a more seamless transition
     if isempty(viewObj.hImg) %show image data on an axis with no images or
                              %replace any existing images
 
@@ -69,12 +70,14 @@ function imgview_hAxes_postset(obj,src,eventdata)
         viewObj.hImg = imshow(img,'Parent',viewObj.hAxes);
         set(viewObj.hImg, 'Tag',obj.tag);
         set(viewObj.hAxes,'NextPlot','Add',...
-                      'Tag',axTag,...imshow resets the axis tag. Why???!!!
-                      'XLimMode','manual',...
-                      'YLimMode','manual',...
-                      'DataAspectRatioMode','manual',...
-                      'PlotBoxAspectRatioMode','manual',...
-                      'PlotBoxAspectRatio',[512 512 1]);
+                          'Tag',axTag,...imshow resets the axis tag. Why???!!!
+                          'XLim',[0 m(2)]+0.5,...
+                          'XLimMode','manual',...
+                          'YLim',[0 m(1)]+0.5,...
+                          'YLimMode','manual',...
+                          'DataAspectRatioMode','manual',...
+                          'PlotBoxAspectRatioMode','manual',...
+                          'PlotBoxAspectRatio',[512 512 1]);
 
     else %overwrite previous image data
         % Grab the data cursor info
@@ -123,13 +126,16 @@ function imgview_hAxes_postset(obj,src,eventdata)
     % (i.e. color overlays) can exist on a single axis, use the iptaddcallback
     % function to ensure that the imgview object is always deleted when the axis
     % is destroyed
+    if ~isempty(viewObj.deleteFcnIdx) %remove previous delete functions
+        iptremovecallback(viewObj.hAxes,'DeleteFcn',viewObj.deleteFcnIdx);
+    end
     viewObj.deleteFcnIdx =...
             iptaddcallback(viewObj.hAxes,'DeleteFcn',@(h,event) viewObj.delete);
 
     % Set the WW/WL functionality and color limits(only for indexed images)
     if ~viewObj.isRgb
         % Only update color limits for non-true color images
-        set(viewObj.hAxes,'CLim',clims);
+        set(viewObj.hAxes,'CLim',sort(clims));
 
         % WW/WL on-the-fly modification is handled by the figure. Ultimately,
         % the object properties are set during calls to the button up function
@@ -175,7 +181,7 @@ function imgview_hAxes_postset(obj,src,eventdata)
         hZoom.Enable = 'on';
     end
 
-    % Cache the attached qt_image object in the figure's application data so we
+    % Cache the attached QT_IMAGE object in the figure's application data so we
     % can fire events if needed (e.g., if displaying a new image on the same
     % axis). Also, as a convenience, cache the qt_image object in the axis'
     % image object. This must be done before creating the on-image context

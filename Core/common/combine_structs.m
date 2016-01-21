@@ -32,7 +32,7 @@ function s = combine_structs(s1,s2,repTag)
     if any( ~isfield(s1,newFlds) )
 
         % Determine which fields must be created from S2
-        newFlds = newFlds( ~isfield(s1,newFlds) );
+        newFlds = newFlds( ~isfield(s1,newFlds) )'; %row vector for 'for' loop
 
         % Either null-fill the missing fields or copy those fields from the
         % second input structure
@@ -40,17 +40,24 @@ function s = combine_structs(s1,s2,repTag)
 
             % Loop through each of the fields that need to be added,
             % null-filling the "old" structure
-            for fldIdx = 1:length(newFlds)
+            for fld = newFlds
 
                 % Determine the class of the new field. Because s1 and/or s2 can
                 % be an array of strcutres, cell fun must be used to deteremine
                 % what class the data are
-                isChar = all( cellfun(@ischar,   {s2.(newFlds{fldIdx})}) );
-                isNum  = all( cellfun(@isnumeric,{s2.(newFlds{fldIdx})}) );
+                isChar  = all( cellfun(@ischar,   {s2.(fld{1})}) );
+                isNum   = all( cellfun(@isnumeric,{s2.(fld{1})}) );
+                isStrct = all( cellfun(@isstruct, {s2.(fld{1})}) );
                 if isChar
-                    [s1(:).(newFlds{fldIdx})] = deal('');
+                    [s1(:).(fld{1})] = deal('');
                 elseif isNum
-                    [s1(:).(newFlds{fldIdx})] = deal([]);
+                    [s1(:).(fld{1})] = deal([]);
+                elseif isStrct
+
+                    % Empty one of the structures of s2 and store in the
+                    % specified field
+                    [s1(:).(fld{1})] = deal(...
+                                          empty_nested_struct(s2(1).(fld{1})) );
                 else
                     error(['QUATTRO:' mfilename ':invalidDataClass'],...
                            'An unknown or invalid data class was detected.');
@@ -62,8 +69,8 @@ function s = combine_structs(s1,s2,repTag)
 
             % Loop through each of the fields that need to be added, and copy
             % the data from the previous structure.
-            for fldIdx = 1:length(newFlds)
-                [s1(:).(newFlds{fldIdx})] = deal( s2.(newFlds{fldIdx}) );
+            for fld = newFlds
+                [s1(:).(fld{1})] = deal( s2.(fld{1}) );
             end
             
             %TODO: the above loop assumes that the "new" structure is a scalar.

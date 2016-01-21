@@ -21,9 +21,9 @@ function show_hist(hObj,eventdata) %#ok
 
         % Get new image data
         if get(hs.popupmenu_data_type,'Value')==1 %show image histogram
-            im = double(obj.image.image);
+            im = double(obj.image.value);
         else %show map histogram
-            im = double(obj.map.image);
+            im = double(obj.map.value);
         end
         setappdata(hFig,'histogramdata',im);
 

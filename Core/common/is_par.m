@@ -21,26 +21,42 @@ function [parVal,nProcessors] = is_par
 %   [FLAG,NP] = is_par returns the machine state flag and the number of
 %   processors currently employed
 
-% Initialize
-[parVal,nProcessors] = deal(0);
+    % Initialize
+    [parVal,nProcessors] = deal(0);
 
-% Test parallel support
-if ~isempty(ver('distcomp'))
-    nProcessors = matlabpool('size');
-    if nProcessors==0
-        parVal = 1;
-    elseif nProcessors==1
-        parVal = 2;
-    else
-        parVal = 3;
+    % Test parallel support
+    if ~isempty(ver('distcomp'))
+
+        % Newer versions of the Parallel Computing Toolbox no longer support
+        % MATLABPOOL. Dichotomize the cases here
+        if verLessThan('distcomp','6.6')
+            nProcessors = matlabpool('size');
+        else
+            pool = gcp('nocreate');
+            nProcessors = 0; %initialize
+            if ~isempty(pool)
+                nProcessors = pool.NumWorkers;
+            end
+        end
+
+        % Determine the output flag
+        if ~nProcessors
+            parVal = 1;
+        elseif (nProcessors==1)
+            parVal = 2;
+        else
+            parVal = 3;
+        end
+
+    elseif exist('ppeval','file') && exist('np','file')
+        nProcessors = np;
+        if ~nProcessors
+            parVal = 4;
+        elseif (nProcessors==1)
+            parVal = 5;
+        else
+            parVal = 6;
+        end
     end
-elseif exist('ppeval','file') && exist('np','file')
-    nProcessors = np;
-    if nProcessors==0
-        parVal = 4;
-    elseif nProcessors==1
-        parVal = 5;
-    else
-        parVal = 6;
-    end
-end
+
+end %is_par

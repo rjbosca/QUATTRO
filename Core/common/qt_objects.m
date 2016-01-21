@@ -10,14 +10,6 @@ function varargout = qt_objects(hObj)
     narginchk(1,1);
     nargoutchk(1,3);
 
-    % Validate the input
-    if isempty(hObj) ||...
-            (verLessThan('matlab','8.4.0') && ~ishandle(hObj)) ||...
-            (~verLessThan('matlab','8.4.0') && ~isvalid(hObj))
-        error(['QUATTRO:' mfilename ':invalidHandle'],...
-                                      'Please specify a valid QUATTRO handle.');
-    end
-
     % Determine which app the handle belongs to
     hFig = guifigure(hObj);
     if strcmpi( get(hFig,'Name'), qt_name ) %handle belongs to QUATTRO
@@ -27,9 +19,15 @@ function varargout = qt_objects(hObj)
     end
 
     % Deal the outputs
-    varargout{1}     = getappdata(hQt,'qtExamObject');
+    exObj            = getappdata(hQt,'qtExamObject');
+    varargout{1}     = exObj;
     if (nargout>1)
-        varargout{2} = getappdata(hQt,'modelsObject');
+        warning(['QUATTRO:' mfilename ':deprecatedSyntax'],...
+                ['QUATTRO no longer caches a modeling object within the ',...
+                 'application data of the main GUI. This output is deprecated ',...
+                 'and will be changed in a future release.']);
+        %TODO: update this to create a new modeling object for the current exam
+        varargout{2} = [];
     end
     if (nargout>2)
         varargout{3} = varargout{1}.opts;

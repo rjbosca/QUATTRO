@@ -491,9 +491,9 @@ classdef qt_response < handle
             % Remove algortihm type specific options
             switch obj.algorithm
                 case 'trees'
-                    val = rmfields(obj.options,obj.ordOpts);
+                    val = rmfield(obj.options,obj.ordOpts);
                 case 'ordinal'
-                    val = rmfields(obj.options,obj.treeOpts);
+                    val = rmfield(obj.options,obj.treeOpts);
                 otherwise
             end
 

@@ -1,8 +1,8 @@
-function update_exam_tools(src,eventdata)
+function update_exam_tools(~,eventdata)
 %update_exam_tools  Updates the QUATTRO GUI following changes to exam type
 %
 %   update_exam_tools(SRC,EVENT) handles QUATTRO GUI update following changes to
-%   the "type" property of qt_exam objects. Exam specific UI controls are
+%   the "type" property of QT_EXAM objects. Exam specific UI controls are 
 %   updated during calls to this event function
 
     % Grab the qt_exam object and determine the exam type
@@ -17,15 +17,14 @@ function update_exam_tools(src,eventdata)
 
     % Update the "Checked" property for the "Exam Type" selections
     newTypeTag = ['menu_' obj.type];
-    set( get(hs.menu_type,'Children'), 'Checked','off' );
     if isfield(hs,newTypeTag)
         set( hs.(newTypeTag), 'Checked','on' );
     else
         warning(['QUATTRO:' mfilename ':invalidMenu'],...
-                ['An attempt was made to set the exam type sub-menu\n',...
-                 'with tag "%s". This is likely the result of a newly',...
-                 'supported exam type in the qt_exam object. Update\n',...
-                 '"gui_menus" to reflect the change.\n\n'],newTypeTag);
+                ['An attempt was made to set the exam type sub-menu ',...
+                 'with tag "%s". This is likely the result of a newly ',...
+                 'supported exam type in the QT_EXAM object. Update ',...
+                 '"gui_menus" to reflect the change.'],newTypeTag);
     end
 
     % Delete previous exam-specific tools and ensure the ROI listbox is the
@@ -39,7 +38,7 @@ function update_exam_tools(src,eventdata)
         % Prepare the dynamic MRI UI tools
         set([hs.menu_modeling
              hs.menu_report_vif
-             hs.menu_exam_options
+             hs.menu_modeling_options
              hs.context_use_as_vif],'Enable','on','Visible','on');
         popStr = get(hs.popupmenu_roi_tag,'String');
         if ~any( strcmpi(popStr,'vif') )
@@ -63,7 +62,7 @@ function update_exam_tools(src,eventdata)
         % Hide UI tools
         set(hs.checkbox_use_voi,'Value',0,'Visible','off');
         hMenu = findobj(get(hs.listbox_rois,'UIContextMenu'),...
-                                                      'Tag','context_go2roi_slice');
+                                                  'Tag','context_go2roi_slice');
         set([hs.uipanel_roi_tools
              hs.menu_calculate_maps
              hs.menu_map_options
@@ -84,35 +83,10 @@ function update_exam_tools(src,eventdata)
 
     % Update the exam type specific menu tags
     visStr = 'on';
-    switch lower(obj.type)
-        case {'dce','dsc','dw'}
-            str = [upper(obj.type) ' Options'];
-        case 'edwi'
-            str = 'eDWI Options';
-        case {'multite','multiti','multitr'}
-            exStr = strrep(obj.type,'multi','');
-            str = ['Multi-' upper(exStr) ' Options'];
-        case 'multiflip'
-            str = 'Multi-Flip Options';
-        otherwise
-            str    = 'Options';
-            visStr = 'off';
+    if any( strcmpi(obj.type,{'generic','surgery'}) )
+        visStr = 'off';
     end
-    set(hs.menu_exam_options,'Label',str,'Visible',visStr);
-
-    % Check for a modeling object. This will need to be replaced with a new
-    % qt_models sub-class object of the appropriate type
-    modelObj = getappdata(hFig,'modelsObject');
-    if ~strcmpi( obj.type, class(modelObj) )
-
-        % Delete previous modeling objects
-        %TODO: see if there is a way around this.
-        modelObj.delete;
-
-        % Create a new empty modeling object and store to the application data
-        setappdata( hFig, 'modelsObject', eval([obj.type '.empty(1,0)']) );
-
-    end
+    set(hs.menu_modeling_options,'Visible',visStr);
 
     % Update the handles structure
     guidata(hFig,guihandles(hFig));

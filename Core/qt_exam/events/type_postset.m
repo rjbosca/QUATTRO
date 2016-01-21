@@ -1,4 +1,4 @@
-function type_postset(src,eventdata)
+function type_postset(~,eventdata)
 %type_postset  PostSet event for the qt_exam "type" property
 %
 %   type_postset(SRC,EVENT) updates the "examType" property of the associated
@@ -16,8 +16,7 @@ function type_postset(src,eventdata)
     % update the qt_options object (so dependent properties will work properly).
     %TODO: what happens when there are multiple exams? what happens if the user
     %changes the exam type of an object that isn't the focus of QUATTRO?
-    setappdata([hFig hExt],'examtype',exType);
-    eventdata.AffectedObject.opts.examType = exType;
+    arrayfun(@(x) setappdata(x,'examtype',exType),[hFig hExt]);
 
     % Prepare the exam
     notify(eventdata.AffectedObject,'initializeExam');

@@ -1,4 +1,4 @@
-function undoroi(obj)
+function undo = undoroi(obj)
 %undoroi  Reverts a pre-modification ROI
 %
 %   undoroi(OBJ) undoes modifications performed on ROIs stored in the qt_exam
@@ -6,7 +6,7 @@ function undoroi(obj)
 %   "undoroi" removes data at the end of the stack; if the undo stack is empty,
 %   no actions are performed.
 
-    undo = obj.roiUndo(end);
+    undo = obj.roiUndo(end); %initialize the output
     if isempty(undo)
         return
     end

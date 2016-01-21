@@ -1,9 +1,11 @@
 function register(obj,varargin)
 %register  Registers HGOs with a qt_exam object
 %
-%   register(OBJ,H) registers the figure handle specified by H to the qt_exam
-%   object, OBJ. The qt_exam object and the QUATTRO figure handle (OBJ.hFig)
-%   will be added to the application data for the specified figure handle.
+%   register(OBJ,H) registers the figure handle specified by H to the QT_EXAM
+%   object, OBJ. The QT_EXAM object and the QUATTRO figure handle ("hFig"
+%   property) will be added to the application data of the specified figure
+%   handle and any script data (set using SCRIPTDATA) will be added to the
+%   QUATTRO GUI
 %
 %   register(OBJ,H1,H2,...) registers all figure handles (H's) as described
 %   previously.
@@ -20,10 +22,15 @@ function register(obj,varargin)
         return
     end
 
-    % Add the exams object and the figure handle to application data so that
-    % other applications can interact.
+    % Add the QT_EXAM object(s) and the QUATTRO figure handle to application
+    % data so that other applications can interact.
     setappdata(varargin{1},'qtExamObject',obj);
     setappdata(varargin{1},'linkedfigure',obj.hFig);
+
+    % Add any script data to QUATTRO
+    if isappdata(varargin{1},'qtScriptData')
+        scriptdata(obj.hFig, getappdata(varargin{1},'qtScriptData'));
+    end
 
     % Get/update the handles
     obj.hExtFig = [obj.hExtFig; varargin{1}];

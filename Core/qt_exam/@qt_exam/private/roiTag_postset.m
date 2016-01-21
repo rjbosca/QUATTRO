@@ -1,8 +1,8 @@
-function roiTag_postset(obj,src,eventdata)
-%roiTag_postset  PostSet event for qt_exam property "roiTag"
+function roiTag_postset(obj,~,~)
+%roiTag_postset  Post-set event for QT_EXAM property "roiTag"
 %
 %   roiTag_postset(OBJ,SRC,EVENT) performs validation on the "rois" and "roiIdx"
-%   properties of the qt_exam object OBJ to ensure that fields for exist for the
+%   properties of the QT_EXAM object OBJ to ensure that fields for exist for the
 %   value of the "roiTag" property. SRC and EVENT are unused. ROI displays are
 %   also updated
 
@@ -17,7 +17,7 @@ function roiTag_postset(obj,src,eventdata)
         obj.rois.(tag)   = qt_roi.empty(1,0);
     end
 
-    % Now that the state of the qt_exam object has been updated, grab the
+    % Now that the state of the QT_EXAM object has been updated, grab the
     % current ROI and update the display
     rois = obj.rois.(tag);
     if any( rois(:).validaterois )

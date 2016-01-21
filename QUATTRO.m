@@ -1,10 +1,20 @@
-function varargout = QUATTRO
+function varargout = QUATTRO(varargin)
 %QUATTRO  Constructs the QUATTRO GUI
 %
-%   H = QUATTRO initializes the QUATTRO graphical user interface, returning the
-%   handle (H) to the figure.
+%   H = QUATTRO initializes the QUATTRO graphical user interface (GUI),
+%   returning the handle (H) to the figure.
 %
-%   See also qt_exam, qt_image, qt_roi, qt_models, qt_options
+%   See also qt_startup
+
+    narginchk(0,0);
+
+    % Initialize QUATTRO's path. QT_STARTUP also initializes the system's
+    % environment variables for accessing the image registration tools
+    qt_startup;
+    if nargin
+        validatestring(varargin{1},{'startup'});
+        return
+    end
 
     % Set up basic display properties
     bkg = [93 93 93]/255;
@@ -14,17 +24,6 @@ function varargout = QUATTRO
     else %if not, use this default vertical position
         pos = 100;
     end
-
-    % Perform path initialization/update
-    startup = fullfile( fileparts(mfilename('fullpath')),...
-                                                'Core','common','qt_startup.m');
-    if ~exist(startup,'file')
-        error('QUATTRO:invalidStartUpFile',...
-             ['QUATTRO was unable to locate a necessary file: qt_startup.m\n',...
-              'Undo any changes made to the QUATTRO directories or try\n',...
-              'downloading the distribution again\n\n']);
-    end
-    run(startup);
 
     % Create the main figure and initialize the operating qt_exam object
     hQt = figure('CloseRequestFcn',     @close_request_Callback,...
@@ -39,12 +38,17 @@ function varargout = QUATTRO
                  'Tag',                 'figure_main',...
                  'Toolbar',             'figure',...
                  'Units',               'Pixels',...
-                 'WindowButtonDownFcn', @button_down_Callback,...
-                 'WindowButtonUpFcn',   @button_up_Callback,...
+                 'WindowButtonDownFcn', @quattro_button_down_Callback,...
+                 'WindowButtonUpFcn',   @quattro_button_up_Callback,...
                  'WindowKeyPressFcn',   @key_press_Callback,...
                  'WindowKeyReleaseFcn', @(h,ed) setappdata(h,'currentKeyModifier',''),...
                  'WindowScrollWheelFcn',@scroll_wheel_Callback);
     obj = qt_exam(hQt);
+
+    % Determine the working MATLAB version and cache in the application data for
+    % faster performance
+    isNumericHandle = verLessThan('matlab','8.4.0');
+    setappdata(hQt,'isNumericHandle',isNumericHandle);
 
     %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~DO NOT EDIT~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     % These defaults have been set up with consideration for the entire QUATTRO
@@ -76,8 +80,8 @@ function varargout = QUATTRO
         % the numeric handles to the associated HGOs, but rather are the actual
         % graphics objects. Since there is no function "isvalid" for the HGO
         % numeric handles, this if statement must be dichotomized.
-        if (verLessThan('matlab','8.4.0') && ~ishandle(hTool)) ||...
-          (~verLessThan('matlab','8.4.0') && ~isvalid(hTool)) ||...
+        if (isNumericHandle  && ~ishandle(hTool)) ||...
+           (~isNumericHandle && ~isvalid(hTool)) ||...
              strcmpi(get(hTool,'Tag'),'figuretoolbar') %don't delete the toolbar
             continue
         end
@@ -124,12 +128,11 @@ function varargout = QUATTRO
     roi_tools(hQt);
 
     % Prepare the zoom mode
-    hZoom = zoom(hQt);
-    set(hZoom,'ActionPostCallback',@update_zoom)
+    set(zoom(hQt),'ActionPostCallback',@update_zoom)
 
     % Attach various event listeners to the qt_exam object that was instantiated
     % with the QUATTRO figure as UI preparation relies on the existence of this
-    % object. Note that in creating a qt_exam object, a qt_options is also
+    % object. Note that in creating a QT_EXAM object, a QT_OPTIONS is also
     % created and stored appropriately 
     create_exam_events(obj);
 
@@ -137,9 +140,8 @@ function varargout = QUATTRO
     gui_menus(hQt);
     roi_listbox_menus( findobj(hQt,'Tag','listbox_rois') );
 
-    % Initialize QUATTRO key modifier cache and the qt_models placeholder
+    % Initialize QUATTRO key modifier cache and the modeling object placeholder
     setappdata(hQt,'currentKeyModifier','');
-    setappdata(hQt,'modelsObject',generic.empty(1,0));
 
     % Set other application data
     set_ui_current_value(hQt);
@@ -156,95 +158,16 @@ function varargout = QUATTRO
 end %QUATTRO
 
 
-%-----------------------Callback/Ancillary Functions----------------------------
+%---------------------------------- Callbacks ----------------------------------
 
-function button_down_Callback(hObj,eventdata) %#ok<*INUSD>
 
-        % Determine which object was hit by the button up event
-        currentPoint  = get(hObj,'CurrentPoint');
-        if verLessThan('matlab','8.4.0')
-            obj       = hittest(hObj,currentPoint);
-        else
-            obj       = hittest(hObj);
-        end
-        objParent     = get(obj,'Parent'); %ROI handle (hopefully)
-        objTag        = get(objParent,'Tag');
-        if isempty(objTag) || ~isempty(strfind(objTag,'axes'))
-            objTag    = get(obj,'Type');
-        end
-        if strcmpi(objTag,'hggroup')
-            objTag    = get(obj,'Tag');
-        end
-
-        % Mouse selection type
-        clickType = get(hObj,'SelectionType');
-
-        % Determines if ROI was hit with a normal click
-        hitRoi = any( strcmpi(objTag,{'imspline','imrect',...
-                                        'imellipse','impoly','impoint'}) );
-        if ~hitRoi || ~strcmpi(clickType,'normal')
-            return
-        end
-
-        % Get handles structure and exams object
-        obj = getappdata(gcbf,'qtExamObject');
-
-        % Clone the ROI into the undo 
-        setappdata(gcbf,'clickedRoiCache',obj.roi.clone);
-
-end %button_down_Callback
-
-function button_up_Callback(hObj,eventdata)
-
-    % Only consider LMB interactions
-    if ~strcmpi( get(hObj,'SelectionType'), 'normal' )
-        return
-    end
-
-    % Get the QUATTRO figure handle and 
-    hFig = gcbf;
-
-    % Determine which object was hit
-    currentPoint = get(hObj,'CurrentPoint');
-    if verLessThan('matlab','8.4.0')
-        obj      = hittest(hFig,currentPoint);
-    else
-        obj      = hittest(hFig);
-    end
-    objParent    = get(obj,'Parent');
-    objTag       = get(objParent,'Tag');
-    if strcmpi(get(obj,'Tag'),'impoint')
-        objTag   = get(obj,'Tag');
-    end
-
-    % Determine if an ROI object was hit
-    hitRoi = any(strcmpi(objTag,{'imspline','imrect','imellipse',...
-                                 'impoly','impoint'})) && ~isempty(objTag);
-    if ~hitRoi || ~isappdata(hFig,'clickedRoiCache')
-        return
-    end
-
-    % Grab the qt_exam object and the cached ROII that was clicked to compare
-    % with the current ROI's position vector with that of the cached ROI's, and
-    % appropriately update the "roiUndo" property.
-    obj      = getappdata(hFig,'qtExamObject');
-    roiCache = getappdata(hFig,'clickedRoiCache');
-    if any( roiCache.position(:)~=obj.roi.position(:) )
-        obj.addroiundo(roiCache,'moved');
-    end
-
-    % Remove the cache
-    rmappdata(hFig,'clickedRoiCache');
-
-end %button_up_Callback
-
-function close_request_Callback(hObj,eventdata)
+function close_request_Callback(hObj,~)
 
     % Before deleting the QUATTRO figure all listeners attached to the qt_exam
     % object by the GUI functionality must be removed to expedite the figure
     % delete operation and avoid warning/error messages that might be triggered
     % by referencing deleted objects while deleting the QUATTRO workspace below.
-    delete( getappdata(hObj,'qtexam_listeners') );
+    delete( getappdata(hObj,'qtExamPropListeners') );
 
     % Delete the QUATTRO workspace
     delete( getappdata(hObj,'qtWorkspace') );
@@ -278,12 +201,12 @@ function key_press_Callback(hObj,eventdata)
     if isempty(eventdata.Modifier)
         switch eventdata.Key
             case 'n' % next series
-                if se < seM
+                if (se<seM) && strcmpi(get(hs.slider_series,'Enable'),'on')
                     set(hs.slider_series, 'Value', (se + 1) );
                     slider_Callback(hs.slider_series,[]);
                 end
             case 'b' % previous series
-                if se > 1 
+                if (se>1 ) && strcmpi(get(hs.slider_series,'Enable'),'on')
                     set(hs.slider_series, 'Value', (se - 1) );
                     slider_Callback(hs.slider_series,[]);
                 end
@@ -312,12 +235,12 @@ function key_press_Callback(hObj,eventdata)
     elseif strcmpi(eventdata.Modifier{1},'shift')
         switch eventdata.Key
             case 'n' % next slice
-                if sl < slM
+                if (sl<slM) && strcmpi(get(hs.slider_slice,'Enable'),'on')
                     set(hs.slider_slice, 'Value', (sl + 1) );
                     slider_Callback(hs.slider_slice, []);
                 end
             case 'b' % previous slice
-                if sl > 1
+                if (sl>1) && strcmpi(get(hs.slider_slice,'Enable'),'on')
                     set(hs.slider_slice, 'Value', (sl - 1) );
                     slider_Callback(hs.slider_slice,[]);
                 end
@@ -342,6 +265,9 @@ function scroll_wheel_Callback(hObj,eventdata)
         h = findobj(hFig,'Tag','slider_series');
     else
         h = findobj(hFig,'Tag','slider_slice');
+    end
+    if strcmpi(get(h,'Enable'),'off') %perform no action when disabled
+        return
     end
     sliderCallback = get(h,'Callback');
     sliderNum      = get(h,'Value');

@@ -1,48 +1,54 @@
 function addroi(obj,roi,varargin)
 %addroi  Adds a qt_roi object to a qt_exam object
 %
-%   addroi(OBJ,ROI) appends the qt_roi object specified by ROI to the qt_exam
+%   addroi(OBJ,ROI) appends the QT_ROI object specified by ROI to the QT_EXAM
 %   object, OBJ. The ROI is added to the qt_exam property "rois" according to
-%   the qt_exam properties "sliceIdx" and "seriesIdx" and the qt_roi properties
+%   the qt_exam properties "sliceIdx" and "seriesIdx" and the QT_ROI properties
 %   "name" and "tag" using the following algorithms:
 %
 %       Object/property         Storage Algorithm
 %       =========================================
-%       qt_exam/"sliceIdx"      ROI is stored at the slice location
+%       QT_EXAM/"sliceIdx"      ROI is stored at the slice location
 %                               specified by "sliceIdx"
 %
-%       qt_exam/"seriesIdx"     ROI is storead at the series location
+%       QT_EXAM/"seriesIdx"     ROI is storead at the series location
 %                               specified by "seriesIdx"
 %
-%       qt_roi/"name"           ROI is appended to the qt_exam ROI
+%       QT_ROI/"name"           ROI is appended to the QT_EXAM ROI
 %                               if "name" is unique, but is otherwise
 %                               added to the current location of the
-%                               qt_roi objects with the same "name"
+%                               ROI object stack with the same "name"
 %
-%       qt_roi/"tag"            ROI is appended to the qt_exam ROI
+%       QT_ROI/"tag"            ROI is appended to the QT_EXAM ROI
 %                               stack according to the "tag" property.
-%                               If the location does not exist, it is
-%                               created.
+%                               The "tag" location is created if 
+%                               needed
 %
 %
 %   addroi(...,'PROP1',VAL1,...) specifies the index 'PROP1' property to be used
-%   in lieu of the qt_exam object properties with the corresponding index value,
+%   in lieu of the QT_EXAM object properties with the corresponding index value,
 %   VAL1. Valid property strings are: 
 %
 %       String          Description
 %       ===========================
-%       'roi'           Since the ROI index is nominally determined
-%                       by the qt_roi "name" property and existing
-%                       ROIs in the qt_exam object stack, specifying
-%                       this property will force the input ROI to be
-%                       placed at the specified location, unless this
-%                       location exceeds the size of the ROI stack
+%       'roi'           The ROI index is nominally determined by the
+%                       QT_ROI "name" property and existing ROIs in 
+%                       the QT_EXAM object stack, specifying this 
+%                       property will force the input ROI to be placed
+%                       at the specified location, unless this location
+%                       exceeds the size of the ROI stack.
+%
+%                       Default: OBJ.roiTag
 %
 %       'slice'         Slice index at which to add the qt_roi
-%                       object. Default: OBJ.sliceIdx
+%                       object. 
+%
+%                       Default: OBJ.sliceIdx
 %
 %       'series'        Series index at which to add the qt_roi
-%                       object. Default: OBJ.seriesIdx
+%                       object.
+%
+%                       Default: OBJ.seriesIdx
 
     % Catch an array of ROIs
     roiType = class(roi);
@@ -139,8 +145,8 @@ function addroi(obj,roi,varargin)
 
         % Determine the default "roiIdx". For ROI tags other than 'roi', the
         % field might be non-existent. Moreover, since the default ROI index is
-        % determined based on the qt_roi property "name" and the current ROIs in
-        % the qt_exam object ROI stack, see if the ROI exists and needs to be
+        % determined based on the QT_ROI property "name" and the current ROIs in
+        % the QT_EXAM object ROI stack, see if the ROI exists and needs to be
         % appended or if a new ROI index is required
         dfltIdx = 1;
         if isfield(obj.roiIdx,roiTag) && (numel(obj.rois.(roiTag))>0)
@@ -152,17 +158,17 @@ function addroi(obj,roi,varargin)
 
         % Set up the parser
         parser = inputParser;
-        parser.addParamValue('roi',   dfltIdx,@(x) x>0);
-        parser.addParamValue('slice', obj.sliceIdx,...
+        parser.addParamValue('roi',dfltIdx,@(x) x>0);
+        parser.addParamValue('slice',obj.sliceIdx,...
                                            @(x) (x>0) && (x<=size(obj.imgs,1)));
         parser.addParamValue('series',obj.seriesIdx,...
                                            @(x) (x>0) && (x<=size(obj.imgs,2)));
 
         % Parse the inputs and deal the outputs
         parser.parse(varargin{:});
-        varargout = {{parser.Results.roi,...
-                      parser.Results.slice,...
-                      parser.Results.series}};
+        varargout = {{ parser.Results.roi,...
+                       parser.Results.slice,...
+                       parser.Results.series }};
 
     end %parse_inputs
 

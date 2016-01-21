@@ -1,5 +1,5 @@
-function updatetext(obj,src,eventdata)
-%updatetext  PostSet event imgview "isDispText" property
+function updatetext(obj,~,~)
+%updatetext  Post-set event for IMGVIEW "isDispText" property
 %
 %   updatetext(OBJ,SRC,EVENT) updates the imgview object specified by the source
 %   object SRC. OBJ an imgview object
@@ -44,7 +44,15 @@ function updatetext(obj,src,eventdata)
     %FIXME: I need to find a way of handling empty cells
 
     % Create a cell of strings and print to the display string
-    sDisp = cellfun(@(x) obj.imgObj.metaData.(x),flds,'UniformOutput',false);
+    %TODO: this try/catch statement is temporary...
+    try
+        sDisp = cellfun(@(x) obj.imgObj.metaData.(x),flds,'UniformOutput',false);
+    catch ME
+        if ~strcmpi(ME.identifier,{'MATLAB:mustBeFieldName'})
+            rethrow(ME)
+        end
+        return
+    end
     nFrmt = numel(frmt);
     if ~nFrmt
         s = cellfun(@(x,y) [y ': ' cast_text(x,y)],...

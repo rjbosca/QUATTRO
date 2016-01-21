@@ -1,7 +1,7 @@
 function addroi(obj,roi)
-%addroi  Adds a qt_roi object to the image object
+%addroi  Adds a QT_ROI object to the image object
 %
-%   addroi(OBJ,ROI) registers the qt_roi object ROI to the qt_image object OBJ,
+%   addroi(OBJ,ROI) registers the QT_ROI object ROI to the QT_IMAGE object OBJ,
 %   updating scale information and displaying if necessary
 
     % Validiate the ROI
@@ -19,16 +19,16 @@ function addroi(obj,roi)
     % Combine the ROI objects
     obj.roiObj = [hRoi roi];
 
-    % A note on reciprocity: Images are automatically registered with ROI objects
-    % when setting the "hAx" property of an ROI. This has caused some confusion
-    % in the past...
+    % A note on reciprocity: Images are automatically registered with ROI
+    % objects when setting the "hAx" property of an ROI. This has caused some
+    % confusion in the past...
 
     % When an ROI is presented for registration with an image object, there is
     % nothing preventing an empty "scale" property. To circumvent this, the
     % property is updated according to the image object if no prior information
     % exists
     if isempty(roi.scale)
-        roi.scale = obj.imageSize;
+        roi.scale = obj.dimSize;
     end
 
     % Notify any image view objects of the change

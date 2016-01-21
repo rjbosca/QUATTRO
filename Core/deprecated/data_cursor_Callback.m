@@ -1,4 +1,4 @@
-function data_cursor_Callback(hObj,eventdata)
+function data_cursor_Callback(hObj,~)
 %data_cursor_Callback  Callback for handling QUATTRO data cursor calls
 %
 %   data_cursor_Callback(H,EVENT) handles the data cursor UI push tool in the
@@ -46,7 +46,7 @@ function data_cursor_Callback(hObj,eventdata)
         set(hData,'Enable','on');
 
         % Apply the update function to the data cursor mode
-        set(hData,'UpdateFcn',@update_data_cursor);
+        iptaddcallback(hData,'UpdateFcn',@update_data_cursor);
 
     end
 

@@ -1,6 +1,6 @@
-classdef (ConstructOnLoad) roiview < handle
+classdef (ConstructOnLoad) roiview < generalopts
 
-    properties (SetObservable=true,AbortSet=true)
+    properties (SetObservable,AbortSet)
 
         % Associated qt_roi object
         %
@@ -25,14 +25,6 @@ classdef (ConstructOnLoad) roiview < handle
         %   representing the x, y, and z ROI scaling components. This property
         %   is update when changes to the "hAxes" propertry occur.
         imageScale
-
-        % Event listeners
-        %
-        %   "eventListeners" stores an array of event listeners that are deleted
-        %   during object destruction. The deletion ensures that additional
-        %   error checking and/or numerous outdated calls to the listeners are
-        %   prevented
-        eventListeners = event.proplistener.empty(1,0);
 
         % Handle listeners
         %
@@ -118,7 +110,7 @@ classdef (ConstructOnLoad) roiview < handle
             addlistener(obj,'render',    'PostSet',@obj.render_postset);
 
             % Attach external properties' listeners
-            obj.eventListeners = addlistener(qtObj,'position','PostSet',...
+            obj.propListeners = addlistener(qtObj,'position','PostSet',...
                                                    @obj.qtroi_position_postset);
 
             % Render is determined by the qt_roi object's "state" property
@@ -202,10 +194,6 @@ classdef (ConstructOnLoad) roiview < handle
 
         end %set.hAxes
 
-        function set.eventListeners(obj,val)
-            obj.eventListeners(end+1) = val;
-        end %set.eventListeners
-
         function set.handleListeners(obj,val)
             if isempty(obj.handleListeners)
                 obj.handleListeners = val;
@@ -226,20 +214,9 @@ classdef (ConstructOnLoad) roiview < handle
             delete(obj.hRoi);
 
             % Delete the listener handles
-            delete(obj.eventListeners);
             delete(obj.handleListeners);
 
         end %roiview.delete
-
-        function sObj = saveobj(obj)
-            sObj = [];
-        end %roiview.saveobj
-    end
-    methods (Static)
-
-        function obj = loadobj(sObj)
-            obj = qt_roi.empty(1,0);
-        end %roiview.loadobj
 
     end
 

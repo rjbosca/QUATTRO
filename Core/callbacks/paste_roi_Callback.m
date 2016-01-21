@@ -1,4 +1,4 @@
-function paste_roi_Callback(hObj,eventdata)
+function paste_roi_Callback(hObj,~)
 %paste_roi_Callback  Callback for ROI paste requests
 %
 %   paste_roi_Callback(H,EVENT)
@@ -19,7 +19,7 @@ function paste_roi_Callback(hObj,eventdata)
                                 'or only images subsquent to the current?'},...
                                 'Paste to All', 'Subsequent', 'All',...
                                 'Cancel', 'Subsequent') );
-        if ~(strcmpi(str,'Cancel') || isempty(str))
+        if (strcmpi(str,'cancel') || isempty(str))
             return
         end
     end
@@ -56,7 +56,9 @@ function paste_roi_Callback(hObj,eventdata)
             roiClone.name  = name;
             roiClone.state = 'on';
 
-            % Add the listener for updating the ROI statistics
+            % Add the listener for updating the ROI statistics. This is a
+            % QUATTRO GUI specific listener so add it here instead of the
+            % "addroi" method
             fcn = @(src,event) update_roi_stats(src,event,obj.hFig);
             addlistener(roiClone,'roiStats','PostSet',fcn);
 

@@ -100,162 +100,157 @@ function roi_listbox_menus(h)
     % Associate menu
     set(h,'UIContextMenu',hCMenu);
 
+end %roi_listbox_menus
+
 
 %------------------------------Callback Functions-------------------------------
 
-    function change_roi_tag_Callback(hObj,eventdata)
+function change_roi_tag_Callback(hObj,~)
 
-        % Get the menu tag and convert to the field string
-        menuTag = get(hObj,'Tag');
-        menuTag = lower( strrep(menuTag,'context_use_as_','') );
+    % Get the menu tag and convert to the field string
+    menuTag = get(hObj,'Tag');
+    menuTag = lower( strrep(menuTag,'context_use_as_','') );
 
-        % Grab the figure handle, exam object, stack of ROIs, and the current
-        % ROI index
-        hFig = guifigure(hObj);
-        obj  = getappdata(hFig,'qtExamObject');
-        rois = obj.rois.(obj.roiTag);
-        idx  = obj.roiIdx.(obj.roiTag);
+    % Grab the figure handle, exam object, stack of ROIs, and the current
+    % ROI index
+    hFig = gcbf;
+    obj  = getappdata(hFig,'qtExamObject');
+    rois = obj.rois.(obj.roiTag);
+    idx  = obj.roiIdx.(obj.roiTag);
 
-        % Update the ROIs according 
-        [rois(idx,:,:,:).tag] = deal(menuTag); %#ok - the data in "rois" doesn't
-                                               %need to be stored because the
-                                               %changes will result in the
-                                               %execution of a number of
-                                               %property listeners 
+    % Update the ROIs according 
+    [rois(idx,:,:,:).tag] = deal(menuTag); %#ok - the data in "rois" doesn't
+                                           %need to be stored because the
+                                           %changes will result in the
+                                           %execution of a number of
+                                           %property listeners 
 
-        % Update the listboxes
-        update_roi_listbox(hFig);
+    % Notify the "roiChanged" event
+    notify(obj,'roiChanged');
 
-    end %add_remove_vif_Callback
+end %add_remove_vif_Callback
 
-    function go2roi_Callback(hObj,eventdata) %#ok<*INUSD>
+function go2roi_Callback(hObj,~)
 
-        % Get exams object and handles
-        hFig = guifigure(hObj);
-        obj  = getappdata(hFig,'qtExamObject');
-        hs   = guidata(hFig);
+    % Get QT_EXAM object
+    obj  = getappdata(gcbf,'qtExamObject');
 
-        % Determine caller and listbox
-        hList = getappdata( get(get(hObj,'Parent'),'Parent'), 'listboxhandle');
-        tag   = lower(get(hObj,'Label'));
-        val   = get(hList,'Value');
-        if isempty(val)
-            warning(['QUATTRO:' mfilename ':noRoiSelected'],'%s\n',...
-                                'Could not locate ROI in QUATTRO environment.');
-            return
-        end
+    % Determine caller and listbox
+    hList = getappdata( get(get(hObj,'Parent'),'Parent'), 'listboxhandle');
+    tag   = lower(get(hObj,'Label'));
+    val   = get(hList,'Value');
+    if isempty(val)
+        warning(['QUATTRO:' mfilename ':noRoiSelected'],'%s\n',...
+                            'Could not locate ROI in QUATTRO environment.');
+        return
+    end
 
-        % Attempt to find on current slice
-        rois          = obj.rois.(obj.roiTag)(val,:,:,:);
-        validRois     = any(rois.validaterois, 4);
-        validRois     = shiftdim(validRois,1); %moves the singleton "ROI"
-                                               %dimension to the end
-        [slIdx,seIdx] = find(validRois,1,tag);
+    % Attempt to find on current slice
+    rois          = obj.rois.(obj.roiTag)(val,:,:,:);
+    validRois     = any(rois.validaterois, 4);
+    validRois     = shiftdim(validRois,1); %moves the singleton "ROI"
+                                           %dimension to the end
+    [slIdx,seIdx] = find(validRois,1,tag);
 
-        % Render display
-        if ( slIdx~=get(hs.slider_slice,'Value') )
-            set(hs.slider_slice,'Value',slIdx);
-            slider_Callback(hs.slider_slice,[]);
-        end
-        if ( seIdx~=get(hs.slider_series,'Value') )
-            set(hs.slider_series,'Value',seIdx);
-            slider_Callback(hs.slider_series,[]);
-        end
+    % Render display by updating the slice and series index of the current 
+    % QT_EXAM object
+    obj.sliceIdx  = slIdx;
+    obj.seriesIdx = seIdx;
 
-    end %go2roi_Callback
+end %go2roi_Callback
 
-    function order_roi_Callback(hObj,eventdata)
-    %order_roi_Callback  Callback for ROI context menus
-    %
-    %   order_roi_Callback(H,EVENT) callback for "Down" and "Up" context menus
-    %   associated with ROI listbox "Order" menus specified by the handle H.
-    %   Event data, specified by the input EVENT, is unused currently
+function order_roi_Callback(hObj,~)
+%order_roi_Callback  Callback for ROI context menus
+%
+%   order_roi_Callback(H,EVENT) callback for "Down" and "Up" context menus
+%   associated with ROI listbox "Order" menus specified by the handle H. Event
+%   data, specified by the input EVENT, is unused currently
 
-        % Get ordering direction and move
-        hs = guidata(hObj);
-        if any(strcmpi(get(hObj,'Label'),{'up','down'}))
-            mvDir = lower(get(hObj,'Label'));
-            hList = hs.listbox_rois;
-        else
-            hList = getappdata(get(hObj,'Parent'),'listboxhandle');
-            mvDir = strrep(get(hList,'Tag'),'listbox_','');
-        end
-
-        % Get the ROI indices in question and create a linear index of values
-        % that will be altered using the masks created below to resort the ROIs.
-        rIdx   = get(hList,'Value');
-        newIdx = 1:numel(get(hList,'String'));
-
-        % Create two masks that will store the location of all ROIs that are not
-        % selected, but must be moved to accomodate the location of the ROIs
-        % that are being moved.
-        [newMask,oldMask] = deal( true(size(newIdx)) );
-        oldMask(rIdx)     = false;
-
-        % Move the ROIs according to the specified action
-        if strcmpi(mvDir,'down')
-
-            % Ensure that the new maximum index does not exceed the number of
-            % ROIs. If so, perform no action
-            if ( (rIdx(end)+1)>newIdx(end) )
-                return
-            end
-
-            % Increment the ROI indices by +1
-            newRIdx = rIdx+1;
-
-        elseif strcmpi(mvDir,'up')
-
-            % Ensure that the new minimum index is not below one (the lowest
-            % valid index). If so, perform no action
-            if ( (rIdx(1)-1)<1 )
-                return
-            end
-
-            % Increment the ROI indices by +1
-            newRIdx = rIdx-1;
-
-        end
-
-        % Update the "newMask" to represent the new location of all ROIs that
-        % are not selected
-        newMask(newRIdx) = false;
-
-        % Use masks to linearly fill the new index locations and store the
-        % location of the ROI indices that are being moved
-        newIdx(newMask) = newIdx(oldMask);
-        newIdx(newRIdx) = rIdx;
-
-        % Store the ROIs
-        obj = getappdata(hs.figure_main,'qtExamObject');
-        obj.moveroi(newIdx);
-
-        % Update the listbox and context menus according to the new data
-        set(hList,'Value',newRIdx);
-        update_order_context_menus(hs.listbox_rois);
-
-    end %order_Callback
-
-    function rename_Callback(hObj,eventdata)
-
-        % Get ROI names
+    % Get ordering direction and move
+    hs = guidata(hObj);
+    if any(strcmpi(get(hObj,'Label'),{'up','down'}))
+        mvDir = lower(get(hObj,'Label'));
+        hList = hs.listbox_rois;
+    else
         hList = getappdata(get(hObj,'Parent'),'listboxhandle');
-        names = get(hList,'String');
-        vals  = get(hList,'Value');
+        mvDir = strrep(get(hList,'Tag'),'listbox_','');
+    end
 
-        % Store new name
-        [name,ok] = cine_dlgs('roi_label',names{vals(1)});
-        if ~ok
+    % Get the ROI indices in question and create a linear index of values that
+    % will be altered using the masks created below to resort the ROIs.
+    rIdx   = get(hList,'Value');
+    newIdx = 1:numel(get(hList,'String'));
+
+    % Create two masks that will store the location of all ROIs that are not
+    % selected, but must be moved to accomodate the location of the ROIs that
+    % are being moved.
+    [newMask,oldMask] = deal( true(size(newIdx)) );
+    oldMask(rIdx)     = false;
+
+    % Move the ROIs according to the specified action
+    if strcmpi(mvDir,'down')
+
+        % Ensure that the new maximum index does not exceed the number of
+        % ROIs. If so, perform no action
+        if ( (rIdx(end)+1)>newIdx(end) )
             return
         end
 
-        % Get exams object, rename ROI, and update the listbox
-        obj            = getappdata(hQt,'qtExamObject');
-        rois           = obj.rois.(obj.roiTag)(vals(1),:,:);
-        [rois.name]    = deal(name);
-        names{vals(1)} = name;
-        set(hList,'String',names);
+        % Increment the ROI indices by +1
+        newRIdx = rIdx+1;
 
-    end %rename_Callback
+    elseif strcmpi(mvDir,'up')
 
-end %roi_listbox_menus
+        % Ensure that the new minimum index is not below one (the lowest valid
+        % index). If so, perform no action
+        if ( (rIdx(1)-1)<1 )
+            return
+        end
+
+        % Increment the ROI indices by +1
+        newRIdx = rIdx-1;
+
+    end
+
+    % Update the "newMask" to represent the new location of all ROIs that are
+    % not selected
+    newMask(newRIdx) = false;
+
+    % Use masks to linearly fill the new index locations and store the location
+    % of the ROI indices that are being moved
+    newIdx(newMask) = newIdx(oldMask);
+    newIdx(newRIdx) = rIdx;
+
+    % Store the ROIs
+    obj = getappdata(hs.figure_main,'qtExamObject');
+    obj.moveroi(newIdx);
+
+    % Update the context menus according to the new data
+    %TODO: this runs a lot of other functions. Really, the only thing that needs
+    %to be accomplished here is to enable disable the appropriate "Order"
+    %context menus
+    update_roi_context_menus(hs.listbox_rois);
+
+end %order_Callback
+
+function rename_Callback(hObj,~)
+
+    % Get ROI names
+    hList = getappdata(get(hObj,'Parent'),'listboxhandle');
+    names = get(hList,'String');
+    vals  = get(hList,'Value');
+
+    % Store new name
+    [name,ok] = cine_dlgs('roi_label',names{vals(1)});
+    if ~ok
+        return
+    end
+
+    % Get exams object, rename ROI, and update the listbox
+    obj            = getappdata(gcbf,'qtExamObject');
+    rois           = obj.rois.(obj.roiTag)(vals(1),:,:);
+    [rois.name]    = deal(name);
+    names{vals(1)} = name;
+    set(hList,'String',names);
+
+end %rename_Callback
